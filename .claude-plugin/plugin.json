@@ -1,0 +1,14 @@
+{
+  "name": "ai-plugin-toolkit",
+  "version": "0.1.0",
+  "description": "Cross-agent skills: skill authoring, DeepSeek Harness (dsh) plugin development, Claude Code plugin development, and DeepSeek model cost routing.",
+  "author": "zhangliang0115",
+  "keywords": [
+    "agent-skills",
+    "deepseek",
+    "dsh",
+    "claude-code",
+    "skills"
+  ],
+  "license": "MIT"
+}

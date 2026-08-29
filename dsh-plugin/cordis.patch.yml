@@ -1,0 +1,10 @@
+# The layer this bundle contributes when a profile lists it.
+#
+# `dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"`
+# appends this bundle to the profile's `dsh.profile.bundles`, and the row below
+# is applied after @deepseek-ai/dsh-base.
+#
+# The row carries no `config` — the plugin takes none.
+- insert:
+    - id: ai-plugin-toolkit
+      name: ai-plugin-toolkit-dsh

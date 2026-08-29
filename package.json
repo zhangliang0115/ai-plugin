@@ -1,0 +1,58 @@
+{
+  "name": "aipx",
+  "version": "0.1.0",
+  "description": "One command to install any AI agent skill/plugin into Claude Code, DeepSeek Harness (dsh), Codex CLI, Gemini CLI, Copilot and Cursor.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "aipx": "bin/aipx.js",
+    "ai-plugin": "bin/aipx.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "registry",
+    "skills",
+    "dsh-plugin",
+    "docs",
+    "scripts",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test test",
+    "lint": "node scripts/lint.mjs",
+    "check-drift": "node scripts/check-drift.mjs",
+    "sync-dsh-skills": "node scripts/sync-dsh-skills.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhangliang0115/ai-plugin.git"
+  },
+  "homepage": "https://github.com/zhangliang0115/ai-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/zhangliang0115/ai-plugin/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "skills",
+    "plugin",
+    "claude-code",
+    "deepseek",
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "codex",
+    "gemini-cli",
+    "copilot",
+    "cursor",
+    "mcp",
+    "cli"
+  ],
+  "author": "zhangliang0115"
+}

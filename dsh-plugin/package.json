@@ -1,0 +1,44 @@
+{
+  "name": "ai-plugin-toolkit-dsh",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness bundle that registers the aipx toolkit skills: cross-agent skill authoring, dsh plugin development, Claude Code plugin development, and DeepSeek model cost routing",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "skills"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "cordis",
+    "agent-skills",
+    "claude-code"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhangliang0115/ai-plugin.git",
+    "directory": "dsh-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/zhangliang0115/ai-plugin/issues"
+  },
+  "author": "zhangliang0115",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}
