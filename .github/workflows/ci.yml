@@ -20,16 +20,21 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: node --version
       - run: npm run lint
-      # Node 22's test runner has a known intermittent IPC deserialization
+      # node:test's child-runner IPC has a known intermittent deserialization
       # flake ("Unable to deserialize cloned data") that fails otherwise-green
-      # runs; retry a couple of times before accepting a failure.
-      - name: Test (retry for Node 22 runner flake)
+      # runs. Retry per test file (3 attempts) before accepting a failure.
+      - name: Test (per-file retry for runner IPC flake)
         run: |
-          for i in 1 2 3; do
-            npm test && exit 0
-            echo "::warning::test attempt $i failed, retrying"
+          fail=0
+          for f in test/*.test.js; do
+            ok=0
+            for attempt in 1 2 3; do
+              if node --test "$f"; then ok=1; break; fi
+              echo "::warning::$f attempt $attempt failed, retrying"
+            done
+            if [ "$ok" != "1" ]; then fail=1; echo "::error::persistent failure: $f"; fi
           done
-          exit 1
+          exit $fail
       - run: npm run check-drift
       - name: Validate registry entries
         run: node scripts/validate-registry.mjs
@@ -47,13 +52,17 @@ jobs:
         with:
           node-version: 22
       - run: node bin/aipx.js --version
-      - name: Test (retry for Node 22 runner flake)
+      - name: Test (per-file retry for runner IPC flake)
         shell: pwsh
         run: |
-          $ok = $false
-          foreach ($i in 1..3) {
-            npm test
-            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
-            Write-Host "::warning::test attempt $i failed, retrying"
+          $failed = @()
+          Get-ChildItem test -Filter *.test.js | ForEach-Object {
+            $ok = $false
+            foreach ($i in 1..3) {
+              node --test $_.FullName
+              if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+              Write-Host "::warning::$($_.Name) attempt $i failed, retrying"
+            }
+            if (-not $ok) { $failed += $_.Name }
           }
-          if (-not $ok) { exit 1 }
+          if ($failed.Count -gt 0) { Write-Host "::error::persistent failures: $($failed -join ', ')"; exit 1 }
