@@ -7,6 +7,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Added
 
+- `lint [path] [--json]` — validate SKILL.md quality: frontmatter presence,
+  kebab-case names (and directory-name mismatch), trigger-style descriptions
+  (missing = error, short/over-limit = warning), body size (progressive
+  disclosure), nested-skill detection (spec violation), broken relative links,
+  orphan directories without SKILL.md. Exit code 1 on errors; CI runs it on
+  the bundled skills.
 - `install --project [path]` — project-scoped installs: writes skills into
   `.claude/skills/`, `.agents/skills/`, `.gemini/skills/`, `.github/skills/` (and
   community roots with `--all`/`--agents`) inside the given directory so a repo
