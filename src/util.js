@@ -26,6 +26,16 @@ export async function exists(p) {
   }
 }
 
+/** True when the path exists as an entry, even if it is a dangling symlink. */
+export async function linkExists(p) {
+  try {
+    await lstat(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function isDir(p) {
   try {
     return (await stat(p)).isDirectory()

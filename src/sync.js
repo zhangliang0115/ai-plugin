@@ -1,3 +1,4 @@
+import { readlink } from 'node:fs/promises'
 import path from 'node:path'
 import { detectAgents, SYNC_PRIMARY } from './agents.js'
 import {
@@ -8,9 +9,12 @@ import {
   expandTilde,
   info,
   isDir,
+  isSymlink,
   linkDir,
+  linkExists,
   listDirs,
   ok,
+  removePath,
   warn,
 } from './util.js'
 
@@ -37,20 +41,21 @@ export async function sync(opts = {}) {
 
   if (targets.length === 0) {
     info('no other agent roots to sync into — primary root covers every detected agent already')
-    return { linked: 0, copied: 0 }
+    return { linked: 0, copied: 0, skipped: 0, pruned: 0 }
   }
 
   const skillNames = []
   for (const name of await listDirs(primary)) {
     if (await exists(path.join(primary, name, 'SKILL.md'))) skillNames.push(name)
   }
-  if (skillNames.length === 0) {
+  if (skillNames.length === 0 && !opts.prune) {
     throw new Error(`${primary} has no skills (no <dir>/SKILL.md found)`)
   }
 
   let linked = 0
   let copied = 0
   let skipped = 0
+  let pruned = 0
 
   for (const t of targets) {
     await ensureDir(t.root)
@@ -60,6 +65,12 @@ export async function sync(opts = {}) {
       if (await exists(dest)) {
         skipped += 1
         continue
+      }
+      // a dangling symlink at dest (skill deleted from primary earlier) would
+      // make linkDir fail with EEXIST — clear it before linking/copying
+      if (await linkExists(dest)) {
+        await removePath(dest)
+        pruned += 1
       }
       if (opts.dryRun) {
         console.log(`    would ${opts.copy ? 'copy' : 'link'} ${dest}`)
@@ -74,11 +85,26 @@ export async function sync(opts = {}) {
       }
       ok(`${opts.copy ? 'copied' : 'linked'} ${c.bold(name)} → ${dest}`)
     }
+
+    // --prune: remove links whose primary skill is gone for good
+    if (opts.prune) {
+      for (const entry of await listDirs(t.root)) {
+        const dest = path.join(t.root, entry)
+        if (!(await isSymlink(dest))) continue
+        if (skillNames.includes(entry)) continue
+        // dangling: lstat sees it, stat (through the link) does not
+        if (!(await exists(dest))) {
+          if (!opts.dryRun) await removePath(dest)
+          pruned += 1
+          ok(`pruned dangling link ${dest}`)
+        }
+      }
+    }
   }
 
   if (opts.dryRun) {
     info('dry run — nothing written')
-    return { linked, copied, skipped }
+    return { linked, copied, skipped, pruned }
   }
 
   console.log()
@@ -91,10 +117,11 @@ export async function sync(opts = {}) {
         (skipped > 0 ? c.dim(` (${skipped} already present)`) : '')
     )
   }
+  if (pruned > 0) ok(`pruned ${pruned} dangling link(s)`)
   if (linked > 0) {
     warn('symlinks point back to ' + primary + ' — edit skills there, every agent sees the change')
   }
-  return { linked, copied, skipped }
+  return { linked, copied, skipped, pruned }
 }
 
 function resolveTargets2(agents, primary, opts) {

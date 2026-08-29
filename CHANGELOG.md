@@ -47,6 +47,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 - `sync` now uses NTFS junctions on Windows instead of directory symlinks —
   junctions need no admin rights or Developer Mode, so linking works on stock
   Windows; `doctor` reports the fallback it detected.
+- `sync --prune` removes dangling links whose primary skill is gone; a broken
+  link at a destination no longer blocks re-linking (it is cleared instead of
+  failing with EEXIST), and links self-heal when a primary skill reappears.
 - GitHub installs crashed with ENOENT between payload detection and the copy
   step — the download temp directory is now cleaned up only after the install
   body finishes.

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { sync } from '../src/sync.js'
 import { remove } from '../src/remove.js'
+import { linkDir } from '../src/util.js'
 
 const SKILL = '---\nname: demo-skill\ndescription: demo\n---\n\n# demo\n'
 
@@ -60,6 +61,53 @@ test('sync is idempotent — second run reports everything present', async () =>
   const res = await sync({ from: primary, roots })
   assert.equal(res.linked + res.copied, 0)
   assert.equal(res.skipped, 1)
+
+  await rm(tmp, { recursive: true, force: true })
+})
+
+test('dangling links self-heal when the primary skill reappears at the same path', async () => {
+  const { tmp, primary } = await makePrimary()
+  const roots = fakeRoots(tmp, ['a'])
+  await sync({ from: primary, roots })
+
+  await rm(path.join(primary, 'demo-skill'), { recursive: true, force: true })
+  await mkdir(path.join(primary, 'demo-skill'), { recursive: true })
+  await writeFile(path.join(primary, 'demo-skill', 'SKILL.md'), SKILL, 'utf8')
+
+  const res = await sync({ from: primary, roots })
+  assert.equal(res.skipped, 1) // the link resolves again on its own
+  const body = await readFile(path.join(roots[0].root, 'demo-skill', 'SKILL.md'), 'utf8')
+  assert.match(body, /# demo/)
+
+  await rm(tmp, { recursive: true, force: true })
+})
+
+test('sync clears a broken link at the destination instead of failing with EEXIST', async () => {
+  const { tmp, primary } = await makePrimary()
+  const roots = fakeRoots(tmp, ['a'])
+  // a link at dest pointing at something that does not exist
+  await mkdir(roots[0].root, { recursive: true })
+  await linkDir(path.join(primary, 'ghost'), path.join(roots[0].root, 'demo-skill'))
+
+  const res = await sync({ from: primary, roots })
+  assert.equal(res.linked, 1)
+  const body = await readFile(path.join(roots[0].root, 'demo-skill', 'SKILL.md'), 'utf8')
+  assert.match(body, /# demo/)
+
+  await rm(tmp, { recursive: true, force: true })
+})
+
+test('sync --prune removes links whose primary skill is gone', async () => {
+  const { tmp, primary } = await makePrimary()
+  const roots = fakeRoots(tmp, ['a'])
+  await sync({ from: primary, roots })
+  const dest = path.join(roots[0].root, 'demo-skill')
+
+  await rm(path.join(primary, 'demo-skill'), { recursive: true, force: true })
+  const res = await sync({ from: primary, roots, prune: true })
+
+  assert.equal(res.pruned, 1)
+  await assert.rejects(() => lstat(dest))
 
   await rm(tmp, { recursive: true, force: true })
 })

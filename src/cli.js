@@ -46,6 +46,7 @@ ${c.bold('Flags')}
   --all              Include community-tier agents during auto-detection
   --force            Overwrite skills that already exist
   --copy             sync: duplicate files instead of symlinking
+  --prune            sync: remove dangling links whose primary skill is gone
   --dry-run          Show what would happen without writing
   --github           search: also query GitHub topics live
   --dir <path>       new: parent directory for the scaffold (default: current directory)
