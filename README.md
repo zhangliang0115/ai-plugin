@@ -68,6 +68,8 @@ aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
 aipx lint skills     # validate SKILL.md quality (frontmatter, triggers, links, nesting)
 aipx new my-skill    # scaffold a publish-ready dual-target skill repo
+aipx mcp list        # inventory MCP servers across every agent's config
+aipx mcp sync fetch  # copy an MCP server definition into all other agents
 aipx remove <name>   # uninstall everywhere
 aipx doctor          # environment + agent detection report
 ```

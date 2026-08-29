@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Added
 
+- `mcp list [--json]` and `mcp sync <name>` — cross-agent MCP server config
+  inventory and sync. Reads `~/.claude.json`, `~/.gemini/settings.json`,
+  `~/.cursor/mcp.json`, `~/.copilot/mcp-config.json`, OpenCode's
+  `opencode.json`, and Codex's TOML `config.toml`. JSON targets are merged
+  (unrelated keys preserved); Codex gets a minimal `[mcp_servers.NAME]` table
+  writer that leaves the rest of the file untouched; remote (url) servers are
+  skipped for Codex and OpenCode stays read-only (shape differs), both with
+  explicit messages. Community-tier targets need `--all`/`--agents`.
 - `new <name>` — scaffold a publish-ready dual-target skill repo: `skills/`
   source of truth, `.claude-plugin/` marketplace manifests, `dsh-plugin/`
   bundle (with runtime skill registration), drift-check + sync scripts, CI

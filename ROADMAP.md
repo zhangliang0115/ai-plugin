@@ -25,9 +25,9 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] `aipx new <name>` — scaffold a dual-target skill repo (skills/ + Claude marketplace + dsh bundle + drift-checked copies + CI, README with ready install lines)
 - [x] Windows junction support for `sync` — NTFS junctions need no admin rights or Developer Mode, so linking works on stock Windows (doctor reports the fallback)
 
-## v0.3
+## v0.3 — in progress
 
-- [ ] MCP server config sync across agents (`aipx mcp sync`)
+- [x] MCP server config sync across agents (`aipx mcp list` / `aipx mcp sync <name>`) — JSON merge + minimal TOML writer for Codex, community targets opt-in
 - [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
 - [ ] Registry submissions via PR bot checks
 

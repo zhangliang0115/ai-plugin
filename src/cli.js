@@ -2,12 +2,13 @@ import { doctor } from './doctor.js'
 import { install } from './install.js'
 import { lintPath } from './lint.js'
 import { list } from './list.js'
+import { listMcp, syncMcp } from './mcp.js'
 import { newRepo } from './scaffold.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
 import { sync } from './sync.js'
 import { upgrade } from './upgrade.js'
-import { c, fail, ok, warn } from './util.js'
+import { c, fail, info, ok, warn } from './util.js'
 
 export const VERSION = '0.1.0'
 
@@ -24,6 +25,8 @@ ${c.bold('Usage')}
   aipx search <query> [--github]  Search the curated registry (+ GitHub topics)
   aipx lint [path] [--json]       Validate SKILL.md quality (default: current directory)
   aipx remove <name>              Uninstall a skill from every agent
+  aipx mcp list [--json]          Show MCP servers configured in each agent's config
+  aipx mcp sync <name> [flags]    Copy an MCP server definition into other agents' configs
   aipx doctor                     Check your environment and detect agents
   aipx --help | --version
 
@@ -36,6 +39,7 @@ ${c.bold('Install sources')}
 ${c.bold('Flags')}
   --agents <id,id>   Install only into these agents (claude-code, dsh, codex, gemini,
                      copilot, cursor, opencode, openclaw)
+  --from <agent>     mcp sync: read the definition from this agent's config
   --project [path]   Install into project-scoped roots inside [path] (default: current
                      directory) — .claude/skills, .agents/skills, .github/skills, …
                      so a repo carries its own skills for the whole team
@@ -63,7 +67,7 @@ Docs: https://github.com/zhangliang0115/ai-plugin#readme
 
 function parseFlags(argv) {
   const flags = { _: [] }
-  const valued = new Set(['--agents', '--dir', '--owner'])
+  const valued = new Set(['--agents', '--dir', '--owner', '--from'])
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--no-color') {
@@ -189,6 +193,44 @@ export async function main(argv) {
           }
         }
         return
+      }
+      case 'mcp': {
+        const sub = flags._[1]
+        if (sub === 'list') {
+          const out = await listMcp(flags)
+          if (flags.json) {
+            console.log(JSON.stringify(out, null, 2))
+          } else {
+            const ids = Object.keys(out)
+            if (ids.length === 0) {
+              info('no MCP configs found in any known agent config file')
+            } else {
+              for (const id of ids) {
+                const entry = out[id]
+                console.log(`\n${entry.label} (${entry.file})`)
+                if (entry.error) {
+                  console.log(`  ${c.red('✗ ' + entry.error)}`)
+                  continue
+                }
+                if (entry.servers.length === 0) console.log(`    ${c.dim('(no servers configured)')}`)
+                for (const s of entry.servers) {
+                  const def = s.def
+                  const summary = def.command
+                    ? `${def.command}${Array.isArray(def.args) ? ' ' + def.args.join(' ') : ''}`
+                    : def.url ?? ''
+                  console.log(`    ${c.bold(s.name)} ${c.dim(summary)}`)
+                }
+              }
+              console.log()
+            }
+          }
+          return
+        }
+        if (sub === 'sync') {
+          await syncMcp(flags._[2], flags)
+          return
+        }
+        throw new Error('usage: aipx mcp list — or — aipx mcp sync <server-name> [--from <agent>] [--agents <id,id>]')
       }
       case 'remove': {
         if (rest.length === 0) throw new Error('usage: aipx remove <skill-name>')
