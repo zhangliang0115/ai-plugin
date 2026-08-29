@@ -70,8 +70,15 @@ check('symlinks supported (used by `aipx sync`)', async () => {
     const target = path.join(dir, 't')
     const link = path.join(dir, 'l')
     await mkdir(target)
-    await symlink(target, link, 'dir')
-    return { pass: true }
+    try {
+      await symlink(target, link, 'dir')
+      return { pass: true }
+    } catch {
+      // Windows without Developer Mode: junctions work where dir symlinks fail
+      const junction = path.join(dir, 'j')
+      await symlink(target, junction, 'junction')
+      return { pass: true, detail: 'via NTFS junction' }
+    }
   } catch {
     return { pass: false, fix: 'symlinks unavailable — use `aipx sync --copy` instead' }
   } finally {

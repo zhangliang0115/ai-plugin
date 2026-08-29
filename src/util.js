@@ -64,7 +64,10 @@ export async function removePath(p) {
 }
 
 export async function linkDir(src, dest) {
-  await symlink(src, dest, 'dir')
+  // Junctions on Windows: directory symlinks need admin rights or Developer
+  // Mode there, junctions need neither — and both read as symlinks to agents.
+  const type = process.platform === 'win32' ? 'junction' : 'dir'
+  await symlink(src, dest, type)
 }
 
 export async function listDirs(dir) {

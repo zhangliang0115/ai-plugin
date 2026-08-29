@@ -15,13 +15,15 @@ Releases are small and frequent. Star the repo / watch releases to follow along.
 - [x] Repo doubles as a Claude Code marketplace and a dsh bundle
 - [x] Curated registry (`registry/index.json`)
 
-## v0.2 — in progress
+## v0.2 — complete
+
+All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, registry bot checks).
 
 - [x] `--project` installs (`.claude/skills/`, `.agents/skills/`, `.github/skills/` …) — official-tier roots by default, `--agents` to narrow
 - [x] `aipx upgrade [name]` — re-install from the recorded source (multi-skill payloads fetched once; new upstream skills land automatically)
 - [x] `aipx lint [path]` — validate SKILL.md frontmatter (name/description, kebab-case, trigger quality, size limits), nested-skill detection, broken relative links; runs on bundled skills in CI
 - [x] `aipx new <name>` — scaffold a dual-target skill repo (skills/ + Claude marketplace + dsh bundle + drift-checked copies + CI, README with ready install lines)
-- [ ] Windows junction support for `sync` (CI matrix)
+- [x] Windows junction support for `sync` — NTFS junctions need no admin rights or Developer Mode, so linking works on stock Windows (doctor reports the fallback)
 
 ## v0.3
 

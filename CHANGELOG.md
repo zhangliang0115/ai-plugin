@@ -32,6 +32,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Fixed
 
+- `sync` now uses NTFS junctions on Windows instead of directory symlinks —
+  junctions need no admin rights or Developer Mode, so linking works on stock
+  Windows; `doctor` reports the fallback it detected.
 - GitHub installs crashed with ENOENT between payload detection and the copy
   step — the download temp directory is now cleaned up only after the install
   body finishes.
