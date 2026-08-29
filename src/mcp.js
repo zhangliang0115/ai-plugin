@@ -277,7 +277,7 @@ export async function syncMcp(name, opts = {}) {
   // destinations
   let destinations
   if (opts.project) {
-    destinations = resolvedProjectTargets(projectDir)
+    destinations = resolvedProjectTargets(projectDir).filter((t) => t.tier === 'official' || opts.all)
     if (opts.agents) {
       const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
       destinations = destinations.filter((t) => ids.includes(t.agentId))
