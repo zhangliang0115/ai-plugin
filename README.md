@@ -127,7 +127,9 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 - [Compatibility matrix](docs/compatibility-matrix.md) — every root, every tier
 - [Install into DeepSeek Harness (dsh)](docs/install-into-dsh.md) — researched guide: skill roots, tiers, bundle format, gotchas
 - [Install into Claude Code](docs/install-into-claude-code.md) — marketplaces & plugins
+- [MCP config sync](docs/mcp-sync.md) — 简体中文版：[docs/mcp-sync.zh-CN.md](docs/mcp-sync.zh-CN.md)
 - [Publish once, target every agent](docs/publish-dual-target.md) — the dual-target repo layout
+- [Troubleshooting](docs/troubleshooting.md) — common failures and fixes
 
 ## Requirements
 
