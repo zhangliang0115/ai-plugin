@@ -256,6 +256,33 @@ export async function readServers(target) {
   return r.servers
 }
 
+/** Remove a server definition from a resolved target config. Returns true when removed. */
+export async function removeServer(target, name) {
+  if (!(await exists(target.resolvedFile))) return false
+  if (target.format === 'toml') {
+    const text = await readFile(target.resolvedFile, 'utf8')
+    const { sectionStart, lines } = parseTomlMcpServers(text, target.key)
+    if (!sectionStart.has(name)) return false
+    const start = sectionStart.get(name)
+    let end = lines.length
+    for (let i = start + 1; i < lines.length; i += 1) {
+      if (/^\s*\[/.test(lines[i])) {
+        end = i
+        break
+      }
+    }
+    lines.splice(start, end - start)
+    await writeFile(target.resolvedFile, lines.join('\n'), 'utf8')
+    return true
+  }
+  const parsed = JSON.parse(await readFile(target.resolvedFile, 'utf8'))
+  const section = parsed?.[target.key]
+  if (!section || !(name in section)) return false
+  delete section[name]
+  await writeFile(target.resolvedFile, JSON.stringify(parsed, null, 2) + '\n', 'utf8')
+  return true
+}
+
 /**
  * Copy the MCP server `name` from its source config into other targets.
  *

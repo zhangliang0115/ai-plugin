@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { install } from '../src/install.js'
+import { remove } from '../src/remove.js'
 
 const MCP_JSON = JSON.stringify({
   mcpServers: {
@@ -76,3 +77,39 @@ test('codex TOML receives the definition when installed', async () => {
   await rm(home, { recursive: true, force: true })
   await rm(payload, { recursive: true, force: true })
 })
+
+test('remove uninstalls MCP servers from recorded configs, preserving the rest', async () => {
+  const prev = process.env.AIPX_CONFIG_DIR
+  process.env.AIPX_CONFIG_DIR = await mkdtemp(path.join(tmpdir(), 'aipx-mcpcfg-'))
+  const home = await mkdtemp(path.join(tmpdir(), 'aipx-mcprm-'))
+  const payload = await makeMcpPayload()
+  // pre-existing unrelated server must survive removal
+  await mkdir(path.join(home, '.claude'), { recursive: true })
+  await writeFile(
+    path.join(home, '.claude.json'),
+    JSON.stringify({ mcpServers: { keeper: { command: 'keep' } } }),
+    'utf8'
+  )
+  await writeCodexPreexisting(home)
+
+  await install(payload, { mcpHome: home }) // official tier: claude-code, gemini, codex
+  const res = await remove('fetch', { home })
+  assert.equal(res, 3)
+
+  const claude = JSON.parse(await readFile(path.join(home, '.claude.json'), 'utf8'))
+  assert.ok(!claude.mcpServers.fetch)
+  assert.equal(claude.mcpServers.keeper.command, 'keep') // unrelated server survives
+
+  const toml = await readFile(path.join(home, '.codex', 'config.toml'), 'utf8')
+  assert.ok(!toml.includes('[mcp_servers.fetch]'))
+
+  process.env.AIPX_CONFIG_DIR = prev
+  await rm(home, { recursive: true, force: true })
+  await rm(payload, { recursive: true, force: true })
+})
+
+async function writeCodexPreexisting(home) {
+  const p = path.join(home, '.codex', 'config.toml')
+  await mkdir(path.dirname(p), { recursive: true })
+  await writeFile(p, '[other]\nkey = "keep"\n', 'utf8')
+}
