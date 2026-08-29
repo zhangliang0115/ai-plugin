@@ -66,3 +66,14 @@ test('local path is detected', async () => {
 test('missing local path throws', async () => {
   await assert.rejects(() => parseSource('./definitely-not-here-12345'))
 })
+
+test('windows drive-letter path is treated as local', async () => {
+  const s = await parseSource('C:\\some\\dir\\that\\does-not-exist-xyz').catch((e) => {
+    // must get past parsing and fail on existence, not on parse
+    assert.match(e.message, /local path not found/)
+    return null
+  })
+  if (s) {
+    assert.equal(s.kind, 'local')
+  }
+})

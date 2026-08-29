@@ -30,7 +30,12 @@ export async function parseSource(input) {
 
 async function tryLocal(raw) {
   const looksLocal =
-    raw.startsWith('./') || raw.startsWith('../') || raw.startsWith('/') || raw.startsWith('~/')
+    raw.startsWith('./') ||
+    raw.startsWith('../') ||
+    raw.startsWith('/') ||
+    raw.startsWith('~/') ||
+    raw.startsWith('\\\\') ||
+    /^[A-Za-z]:[\\/]/.test(raw) // Windows drive letter (C:\ or C:/)
   if (!looksLocal) return null
   const p = expandTilde(raw)
   if (!(await exists(p))) throw new Error(`local path not found: ${p}`)
