@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] — 2026-08-30
 
 ### Added
 
@@ -12,6 +12,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
   definitions to the target agents' MCP configs (JSON merge + Codex TOML
   writer). Tier policy applies: official configs by default, community with
   `--all`/`--agents`.
+- MCP server uninstall: `aipx remove <name>` recognizes mcp-config entries and
+  removes the definition from each recorded config (JSON delete preserving
+  other keys/servers; Codex TOML section removal preserving other tables).
+- `mcp list/sync --project [path]` — team-shared project MCP configs
+  (Claude Code's `.mcp.json`, community: `.cursor/mcp.json`).
+- `list --project [path]` — project-scoped skill inventory.
+- `remove` also scans manifest-recorded roots, so project-scoped installs are
+  removable via the CLI (legacy dest-path entries normalized).
+- Registry website: `scripts/build-site.mjs` renders the registry into a
+  dependency-free static page, auto-deployed to GitHub Pages.
+- Registry install smoke: a weekly CI run executes every registry `aipx install`
+  line in dry-run mode against live GitHub (isolated config, no writes) and
+  posts a per-entry summary — dead install lines are caught before users hit
+  them.
+- `sync --prune` removes dangling links whose primary skill is gone; a broken
+  link at a destination no longer blocks re-linking (cleared instead of failing
+  with EEXIST), and links self-heal when a primary skill reappears.
+- npm publish workflow (`.github/workflows/npm-publish.yml`), gated on the
+  `NPM_TOKEN` secret.
+- Troubleshooting guide (docs/troubleshooting.md) and Chinese translation of
+  the MCP sync guide (docs/mcp-sync.zh-CN.md).
+- Install hints now render the concrete owner/repo (and `#path:` subdirectory)
+  instead of placeholders.
+
+### Changed
+
+- CI test step retries per test file (3 attempts) to absorb the node:test
+  child-runner IPC deserialization flake seen on shared runners.
 
 ## [0.2.0] — 2026-08-29
 
@@ -95,5 +123,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
   publish-dual-target guides; English + Chinese READMEs.
 - CI: `node --test` on Node 20/22/24, syntax lint, dsh-skill drift check.
 
+[0.3.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.1.0
