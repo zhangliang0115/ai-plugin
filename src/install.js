@@ -168,23 +168,29 @@ export async function install(sourceInput, opts = {}) {
 }
 
 /**
- * Install MCP server definitions from an mcp-config payload into the target
- * agents' MCP config files. Official-tier configs by default; --agents narrows.
+ * Install MCP server definitions from an mcp-config payload. Default targets
+ * are official-tier user configs; `--project` writes the team-shared project
+ * configs (`.mcp.json`, `.cursor/mcp.json`) instead.
  */
 async function installMcpServers(payload, source, opts) {
-  const { mcpTargets, writeServer } = await import('./mcp.js')
+  const { mcpTargets, MCP_PROJECT_TARGETS, writeServer } = await import('./mcp.js')
 
-  const { MCP_TARGETS } = await import('./mcp.js')
   let destinations
+  if (opts.project) {
+    const dir = opts.project === true ? process.cwd() : expandTilde(opts.project)
+    if (!(await isDir(dir))) throw new Error(`project directory not found: ${dir}`)
+    destinations = MCP_PROJECT_TARGETS.map((t) => ({ ...t, resolvedFile: path.join(dir, t.file) }))
+  } else {
+    destinations = mcpTargets(opts.mcpHome)
+  }
+  destinations = destinations.filter((t) => t.tier === 'official' || opts.all)
   if (opts.agents) {
     const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
-    const unknown = ids.filter((id) => !MCP_TARGETS.some((t) => t.agentId === id))
+    const unknown = ids.filter((id) => !destinations.some((t) => t.agentId === id))
     if (unknown.length > 0) {
-      throw new Error(`unknown agent id(s): ${unknown.join(', ')} — known MCP targets: ${MCP_TARGETS.map((t) => t.agentId).join(', ')}`)
+      throw new Error(`unknown agent id(s): ${unknown.join(', ')} — known MCP targets: ${MCP_PROJECT_TARGETS.map((t) => t.agentId).join(', ')}, ${mcpTargets(opts.mcpHome).map((t) => t.agentId).join(', ')}`)
     }
-    destinations = mcpTargets(opts.mcpHome).filter((t) => ids.includes(t.agentId))
-  } else {
-    destinations = mcpTargets(opts.mcpHome).filter((t) => t.tier === 'official' || opts.all)
+    destinations = destinations.filter((t) => ids.includes(t.agentId))
   }
 
   console.log()

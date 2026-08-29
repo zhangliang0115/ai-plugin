@@ -65,6 +65,23 @@ test('MCP install respects tier policy — community targets need --all', async 
   await rm(payload, { recursive: true, force: true })
 })
 
+test('MCP install --project writes the team-shared .mcp.json', async () => {
+  const home = await mkdtemp(path.join(tmpdir(), 'aipx-mcpinst5-'))
+  const project = await mkdtemp(path.join(tmpdir(), 'aipx-mcpinst5p-'))
+  const payload = await makeMcpPayload()
+
+  const res = await install(payload, { mcpHome: home, project })
+  assert.equal(res.installed, 1) // only claude-code has an official project target
+
+  const mcpJson = JSON.parse(await readFile(path.join(project, '.mcp.json'), 'utf8'))
+  assert.equal(mcpJson.mcpServers.fetch.command, 'npx')
+  await assert.rejects(() => readFile(path.join(project, '.cursor', 'mcp.json'), 'utf8'))
+
+  await rm(home, { recursive: true, force: true })
+  await rm(project, { recursive: true, force: true })
+  await rm(payload, { recursive: true, force: true })
+})
+
 test('codex TOML receives the definition when installed', async () => {
   const home = await mkdtemp(path.join(tmpdir(), 'aipx-mcpinst4-'))
   const payload = await makeMcpPayload()
