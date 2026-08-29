@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { sync } from '../src/sync.js'
 import { remove } from '../src/remove.js'
+import { install } from '../src/install.js'
 import { linkDir } from '../src/util.js'
 
 const SKILL = '---\nname: demo-skill\ndescription: demo\n---\n\n# demo\n'
@@ -112,17 +113,31 @@ test('sync --prune removes links whose primary skill is gone', async () => {
   await rm(tmp, { recursive: true, force: true })
 })
 
-test('remove deletes a skill from every root where it appears', async () => {
-  const { tmp, primary } = await makePrimary()
-  const roots = fakeRoots(tmp, ['a', 'b'])
-  await sync({ from: primary, roots })
+test('remove clears manifest-recorded project roots too', async () => {
+  const prev = process.env.AIPX_CONFIG_DIR
+  process.env.AIPX_CONFIG_DIR = await mkdtemp(path.join(tmpdir(), 'aipx-cfg3-'))
 
-  // remove scans real agent roots plus... it only scans real roots, so fake
-  // roots are not touched; on a clean name it must be a no-op everywhere.
-  const n = await remove('aipx-does-not-exist-anywhere')
-  assert.equal(n, 0)
+  const tmp = await mkdtemp(path.join(tmpdir(), 'aipx-rm-'))
+  const payload = await mkdtemp(path.join(tmpdir(), 'aipx-rmp-'))
+  const skillDir = path.join(payload, 'skills', 'proj-skill')
+  await mkdir(skillDir, { recursive: true })
+  await writeFile(
+    path.join(skillDir, 'SKILL.md'),
+    '---\nname: proj-skill\ndescription: installed at project scope\n---\n\n# proj\n',
+    'utf8'
+  )
 
+  const projectRoot = path.join(tmp, 'repo', '.agents', 'skills')
+  await install(payload, { roots: [{ agent: { id: 'p', label: 'Proj', note: null }, root: projectRoot }] })
+  await readFile(path.join(projectRoot, 'proj-skill', 'SKILL.md'), 'utf8') // installed
+
+  const n = await remove('proj-skill')
+  assert.equal(n, 1)
+  await assert.rejects(() => readFile(path.join(projectRoot, 'proj-skill', 'SKILL.md'), 'utf8'))
+
+  process.env.AIPX_CONFIG_DIR = prev
   await rm(tmp, { recursive: true, force: true })
+  await rm(payload, { recursive: true, force: true })
 })
 
 test('remove rejects missing args', async () => {
