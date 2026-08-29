@@ -9,10 +9,38 @@ import { exists, expandTilde, isSymlink, listDirs, parseFrontmatter } from './ut
  */
 export async function list(opts = {}) {
   const out = {}
-  for (const agent of AGENTS) {
-    const root = expandTilde(agent.userRoot)
+
+  const scanRoot = async (agent, root) => {
     const skills = await skillsIn(root)
     if (skills.length > 0) out[agent.id] = { label: agent.label, root, skills }
+  }
+
+  if (opts.project) {
+    // project-scope view: scan every agent's project root under the given dir
+    const dir = opts.project === true ? process.cwd() : expandTilde(opts.project)
+    for (const agent of AGENTS) {
+      if (!agent.projectRoot) continue
+      await scanRoot(agent, path.join(dir, agent.projectRoot))
+    }
+    if (Object.keys(out).length === 0 && !opts.json) {
+      console.log(`no project skills found under ${dir} — install with: aipx install owner/repo --project ${dir === process.cwd() ? '.' : `"${dir}"`}`)
+    }
+    if (opts.json) return out
+    for (const entry of Object.values(out)) {
+      console.log(`\n${entry.label} (${entry.root})`)
+      for (const s of entry.skills) {
+        const mark = s.link ? '(synced link)' : ''
+        const desc = s.description ? ` — ${truncate(s.description, 80)}` : ''
+        console.log(`    ${s.name} ${mark}${desc}`)
+      }
+    }
+    console.log()
+    return out
+  }
+
+  for (const agent of AGENTS) {
+    const root = expandTilde(agent.userRoot)
+    await scanRoot(agent, root)
   }
 
   if (opts.json) return out
@@ -23,7 +51,7 @@ export async function list(opts = {}) {
     return out
   }
 
-  for (const [id, entry] of Object.entries(out)) {
+  for (const entry of Object.values(out)) {
     console.log(`\n${entry.label} (${entry.root})`)
     for (const s of entry.skills) {
       const mark = s.link ? '(synced link)' : ''
