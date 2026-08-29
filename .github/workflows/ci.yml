@@ -31,6 +31,10 @@ jobs:
           done
           exit 1
       - run: npm run check-drift
+      - name: Validate registry entries
+        run: node scripts/validate-registry.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: node bin/aipx.js --version
       - run: node bin/aipx.js --help > /dev/null
       - run: node bin/aipx.js lint skills

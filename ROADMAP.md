@@ -28,8 +28,8 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 ## v0.3 — in progress
 
 - [x] MCP server config sync across agents (`aipx mcp list` / `aipx mcp sync <name>`) — JSON merge + minimal TOML writer for Codex, community targets opt-in
+- [x] Registry submissions via PR bot checks — CI validates every entry against the GitHub API (repo exists, schema coherent, no duplicates)
 - [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
-- [ ] Registry submissions via PR bot checks
 
 ## v0.4
 

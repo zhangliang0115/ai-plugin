@@ -7,6 +7,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Added
 
+- Registry validation bot: CI (and `npm run validate-registry`) checks every
+  `registry/index.json` entry against the GitHub API — repo exists and is
+  public, schema fields present, install lines on installable kinds, no
+  duplicate listings. PRs adding entries fail fast with per-entry errors.
 - `mcp list [--json]` and `mcp sync <name>` — cross-agent MCP server config
   inventory and sync. Reads `~/.claude.json`, `~/.gemini/settings.json`,
   `~/.cursor/mcp.json`, `~/.copilot/mcp-config.json`, OpenCode's

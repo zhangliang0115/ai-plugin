@@ -27,6 +27,7 @@
     "test": "node --test",
     "lint": "node scripts/lint.mjs",
     "check-drift": "node scripts/check-drift.mjs",
+    "validate-registry": "node scripts/validate-registry.mjs",
     "sync-dsh-skills": "node scripts/sync-dsh-skills.mjs"
   },
   "repository": {

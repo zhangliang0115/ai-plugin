@@ -23,7 +23,8 @@ Open a PR editing [`registry/index.json`](registry/index.json) (or an issue
 with the [plugin submission template](.github/ISSUE_TEMPLATE/plugin-submission.md)).
 Rules:
 
-1. The repo must exist and be public — CI verifies via the GitHub API.
+1. The repo must exist and be public — CI verifies via the GitHub API
+   (`npm run validate-registry` runs locally too).
 2. `description` in your own words, `topics` honest (only tags your repo carries).
 3. One entry per repo. Include an `install` line users can copy-paste.
 
