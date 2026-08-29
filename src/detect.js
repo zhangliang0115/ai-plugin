@@ -15,17 +15,19 @@ import { isValidSkillName, normalizeSkillName } from './util.js'
  * dsh bundle); `kinds` lists everything detected, `skills` collects every
  * installable skill, `hints` carries per-kind follow-up advice.
  */
-export async function detectPayload(dir) {
+export async function detectPayload(dir, source = null, repoRel = '') {
   const kinds = []
   const hints = []
   const skills = []
+
+  const ghLabel = source?.kind === 'github' ? `${source.owner}/${source.repo}` : null
 
   const claudeMarker = path.join(dir, '.claude-plugin', 'plugin.json')
   if (await exists(claudeMarker)) {
     kinds.push('claude-plugin')
     hints.push(
       'Claude Code plugin detected — you can also add this repo as a marketplace directly:\n' +
-        "    /plugin marketplace add <owner>/<repo>\n" +
+        `    /plugin marketplace add ${ghLabel ?? '<owner>/<repo>'}\n` +
         '  then: /plugin install <plugin-name>@<marketplace-name>'
     )
   }
@@ -41,9 +43,14 @@ export async function detectPayload(dir) {
   }
   if (pkg?.dsh?.bundle?.patch) {
     kinds.push('dsh-plugin')
+    const ghRef = ghLabel
+      ? repoRel
+        ? `github:${ghLabel}#path:/${repoRel}`
+        : `github:${ghLabel}`
+      : 'github:<owner>/<repo>#path:/<subdir>'
     hints.push(
       'DeepSeek Harness bundle detected — install it into a dsh profile with:\n' +
-        '    dsh plugin --profile <profile> add "github:<owner>/<repo>#path:/<subdir>"'
+        `    dsh plugin --profile <profile> add "${ghRef}"`
     )
   }
 

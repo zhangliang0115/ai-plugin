@@ -3,6 +3,8 @@
 Every agent that speaks MCP keeps its server list in a different file, in a
 different format. `aipx mcp` gives you one inventory and one copy command.
 
+> 简体中文版：[docs/mcp-sync.zh-CN.md](mcp-sync.zh-CN.md)
+
 ## Where each agent keeps MCP servers
 
 | Agent | Config file | Format | Key | Tier |

@@ -82,6 +82,20 @@ test('falls back to directory name when frontmatter has no name', async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
+test('hints carry concrete owner/repo when the source is known', async () => {
+  const dir = await scratch()
+  await mkdir(path.join(dir, '.claude-plugin'), { recursive: true })
+  await writeFile(
+    path.join(dir, '.claude-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'x' }),
+    'utf8'
+  )
+  const p = await detectPayload(dir, { kind: 'github', owner: 'someuser', repo: 'their-repo' })
+  assert.ok(p.hints.some((h) => h.includes('/plugin marketplace add someuser/their-repo')))
+  assert.ok(!p.hints.some((h) => h.includes('<owner>/<repo>')))
+  await rm(dir, { recursive: true, force: true })
+})
+
 test('throws a helpful error on an empty payload', async () => {
   const dir = await scratch()
   await assert.rejects(() => detectPayload(dir), /no plugin payload found/)

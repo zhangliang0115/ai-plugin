@@ -53,7 +53,7 @@ export async function install(sourceInput, opts = {}) {
     }
   }
 
-  const payload = await detectPayload(payloadDir)
+  const payload = await detectPayload(payloadDir, source, source.sub ?? '')
 
   // temp stays alive until the install body below finishes: payload files are
   // copied (not just parsed), so cleanup happens in the finally block.
