@@ -11,6 +11,8 @@ export function expandTilde(p) {
 }
 
 export function configDir() {
+  // AIPX_CONFIG_DIR isolates tests (and CI) from the real user manifest.
+  if (process.env.AIPX_CONFIG_DIR) return process.env.AIPX_CONFIG_DIR
   const base = process.env.XDG_CONFIG_HOME || path.join(HOME, '.config')
   return path.join(base, 'aipx')
 }

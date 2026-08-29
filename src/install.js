@@ -134,7 +134,7 @@ export async function install(sourceInput, opts = {}) {
       for (const p of plan) {
         if (!installedRoots.has(p.dest)) continue
         const list = bySkill.get(p.skill.name) ?? []
-        list.push(p.dest)
+        list.push(p.root.root) // the agent root dir, not the per-skill dest
         bySkill.set(p.skill.name, list)
       }
       for (const [name, rootsHit] of bySkill) {

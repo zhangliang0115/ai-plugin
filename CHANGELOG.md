@@ -13,12 +13,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
   carries its own skills for the whole team. Project mode targets official-tier
   agents with a project root regardless of what is installed locally; `--agents`
   narrows the set. Installs are recorded with a `project` scope in the manifest.
+- `upgrade [name]` — re-install recorded skills from their recorded source with
+  force semantics; entries are grouped by source so a multi-skill payload is
+  fetched once, and skills added upstream land automatically. Skills removed
+  upstream are left on disk (use `remove`). `AIPX_CONFIG_DIR` env var isolates
+  the manifest for tests/CI.
 
 ### Fixed
 
 - GitHub installs crashed with ENOENT between payload detection and the copy
   step — the download temp directory is now cleaned up only after the install
   body finishes.
+- The install manifest recorded per-skill destination paths in `roots` instead
+  of the containing agent root, which would have broken re-install flows
+  (nested `<root>/<skill>/<skill>`). New installs record true roots; `upgrade`
+  normalizes old entries.
 
 ## [0.1.0] — 2026-08-29
 

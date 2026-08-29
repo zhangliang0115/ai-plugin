@@ -18,8 +18,8 @@ Releases are small and frequent. Star the repo / watch releases to follow along.
 ## v0.2 — in progress
 
 - [x] `--project` installs (`.claude/skills/`, `.agents/skills/`, `.github/skills/` …) — official-tier roots by default, `--agents` to narrow
+- [x] `aipx upgrade [name]` — re-install from the recorded source (multi-skill payloads fetched once; new upstream skills land automatically)
 - [ ] `aipx new <name>` — scaffold a dual-target skill repo
-- [ ] `aipx upgrade [name]` — re-install from the recorded source
 - [ ] Windows junction support for `sync` (CI matrix)
 - [ ] `aipx lint` — validate SKILL.md frontmatter, description quality, size limits
 

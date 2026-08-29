@@ -63,6 +63,7 @@ aipx install owner/repo --project                # project-scoped: .claude/skill
                                                  # committed with the repo for the team
 
 aipx sync            # link ~/.agents/skills into every other detected agent root
+aipx upgrade         # re-install recorded skills from their source (--force semantics)
 aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
 aipx remove <name>   # uninstall everywhere

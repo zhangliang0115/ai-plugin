@@ -59,6 +59,7 @@ aipx install owner/repo --project                # 项目级：.claude/skills、
                                                  # 随仓库提交，全团队共享
 
 aipx sync            # 把 ~/.agents/skills 链接到其他所有检测到的 Agent 根目录
+aipx upgrade         # 从记录的来源重装已装技能（等价 --force）
 aipx list            # 按 Agent 列出已装技能
 aipx search deepseek # 精选注册表；加 --github 实时搜索 GitHub topics
 aipx remove <name>   # 从所有 Agent 卸载

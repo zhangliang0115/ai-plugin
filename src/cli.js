@@ -4,6 +4,7 @@ import { list } from './list.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
 import { sync } from './sync.js'
+import { upgrade } from './upgrade.js'
 import { c, fail } from './util.js'
 
 export const VERSION = '0.1.0'
@@ -15,6 +16,7 @@ ${c.bold('aipx')} — install any AI agent skill/plugin into every agent, once.
 ${c.bold('Usage')}
   aipx install <source> [flags]   Install a skill/plugin from GitHub or a local directory
   aipx sync [flags]               Mirror skills from ~/.agents/skills into every other agent
+  aipx upgrade [name] [flags]     Re-install recorded skills from their source (all, or one)
   aipx list [--json]              Show installed skills per agent
   aipx search <query> [--github]  Search the curated registry (+ GitHub topics)
   aipx remove <name>              Uninstall a skill from every agent
@@ -45,6 +47,7 @@ ${c.bold('Examples')}
   aipx install zhangliang0115/ai-plugin#path:/skills/skill-author
   aipx install owner/repo --project          # project skills, committed with the repo
   aipx sync                       # one copy of every skill, visible in every agent
+  aipx upgrade                    # re-install everything from its recorded source
   aipx list
   aipx doctor
 
@@ -123,6 +126,10 @@ export async function main(argv) {
       }
       case 'sync': {
         await sync(flags)
+        return
+      }
+      case 'upgrade': {
+        await upgrade(flags._[1], flags)
         return
       }
       case 'list': {
