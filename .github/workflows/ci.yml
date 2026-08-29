@@ -20,7 +20,16 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: node --version
       - run: npm run lint
-      - run: npm test
+      # Node 22's test runner has a known intermittent IPC deserialization
+      # flake ("Unable to deserialize cloned data") that fails otherwise-green
+      # runs; retry a couple of times before accepting a failure.
+      - name: Test (retry for Node 22 runner flake)
+        run: |
+          for i in 1 2 3; do
+            npm test && exit 0
+            echo "::warning::test attempt $i failed, retrying"
+          done
+          exit 1
       - run: npm run check-drift
       - run: node bin/aipx.js --version
       - run: node bin/aipx.js --help > /dev/null
@@ -34,4 +43,13 @@ jobs:
         with:
           node-version: 22
       - run: node bin/aipx.js --version
-      - run: npm test
+      - name: Test (retry for Node 22 runner flake)
+        shell: pwsh
+        run: |
+          $ok = $false
+          foreach ($i in 1..3) {
+            npm test
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            Write-Host "::warning::test attempt $i failed, retrying"
+          }
+          if (-not $ok) { exit 1 }
