@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `install --project [path]` — project-scoped installs: writes skills into
+  `.claude/skills/`, `.agents/skills/`, `.gemini/skills/`, `.github/skills/` (and
+  community roots with `--all`/`--agents`) inside the given directory so a repo
+  carries its own skills for the whole team. Project mode targets official-tier
+  agents with a project root regardless of what is installed locally; `--agents`
+  narrows the set. Installs are recorded with a `project` scope in the manifest.
+
+### Fixed
+
+- GitHub installs crashed with ENOENT between payload detection and the copy
+  step — the download temp directory is now cleaned up only after the install
+  body finishes.
+
 ## [0.1.0] — 2026-08-29
 
 ### Added

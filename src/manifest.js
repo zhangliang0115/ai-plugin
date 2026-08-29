@@ -21,11 +21,12 @@ export async function saveManifest(manifest) {
   await writeJson(manifestPath(), manifest)
 }
 
-export async function recordInstall({ name, description, source, kind, roots }) {
+export async function recordInstall({ name, description, source, kind, scope = 'user', roots }) {
   const manifest = await loadManifest()
   manifest.installed[name] = {
     source,
     kind,
+    scope,
     description,
     installedAt: new Date().toISOString(),
     roots,

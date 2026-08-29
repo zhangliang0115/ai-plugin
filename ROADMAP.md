@@ -15,9 +15,9 @@ Releases are small and frequent. Star the repo / watch releases to follow along.
 - [x] Repo doubles as a Claude Code marketplace and a dsh bundle
 - [x] Curated registry (`registry/index.json`)
 
-## v0.2 — next
+## v0.2 — in progress
 
-- [ ] `--project` installs (`.claude/skills/`, `.agents/skills/`, `.github/skills/` …)
+- [x] `--project` installs (`.claude/skills/`, `.agents/skills/`, `.github/skills/` …) — official-tier roots by default, `--agents` to narrow
 - [ ] `aipx new <name>` — scaffold a dual-target skill repo
 - [ ] `aipx upgrade [name]` — re-install from the recorded source
 - [ ] Windows junction support for `sync` (CI matrix)

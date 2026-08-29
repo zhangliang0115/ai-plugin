@@ -30,6 +30,9 @@ ${c.bold('Install sources')}
 ${c.bold('Flags')}
   --agents <id,id>   Install only into these agents (claude-code, dsh, codex, gemini,
                      copilot, cursor, opencode, openclaw)
+  --project [path]   Install into project-scoped roots inside [path] (default: current
+                     directory) — .claude/skills, .agents/skills, .github/skills, …
+                     so a repo carries its own skills for the whole team
   --all              Include community-tier agents during auto-detection
   --force            Overwrite skills that already exist
   --copy             sync: duplicate files instead of symlinking
@@ -40,6 +43,7 @@ ${c.bold('Flags')}
 
 ${c.bold('Examples')}
   aipx install zhangliang0115/ai-plugin#path:/skills/skill-author
+  aipx install owner/repo --project          # project skills, committed with the repo
   aipx sync                       # one copy of every skill, visible in every agent
   aipx list
   aipx doctor
@@ -70,6 +74,14 @@ function parseFlags(argv) {
       flags.all = true
     } else if (a === '--github') {
       flags.github = true
+    } else if (a === '--project') {
+      const next = argv[i + 1]
+      if (next !== undefined && !next.startsWith('-')) {
+        flags.project = next
+        i += 1
+      } else {
+        flags.project = true // no value given → current directory
+      }
     } else if (valued.has(a)) {
       flags[a.slice(2)] = argv[++i]
     } else if (a.startsWith('--')) {

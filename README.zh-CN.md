@@ -54,6 +54,9 @@ aipx install owner/repo                          # 自动识别仓库根目录�
 aipx install owner/repo#path:/skills/their-skill # 子目录（与 dsh 相同的语法）
 aipx install https://github.com/owner/repo/tree/v1.2/skills/x   # 锁定 ref
 aipx install ./my-skill                          # 本地目录
+aipx install owner/repo --project                # 项目级：.claude/skills、
+                                                 # .agents/skills、.github/skills……
+                                                 # 随仓库提交，全团队共享
 
 aipx sync            # 把 ~/.agents/skills 链接到其他所有检测到的 Agent 根目录
 aipx list            # 按 Agent 列出已装技能

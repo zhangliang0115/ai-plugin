@@ -1,4 +1,5 @@
 import { accessSync, constants as fsConstants } from 'node:fs'
+import path from 'node:path'
 import { expandTilde, isDir } from './util.js'
 
 /**
@@ -144,4 +145,22 @@ export async function userRootsFor(agents) {
     roots.push({ agent: a, root: expandTilde(a.userRoot) })
   }
   return roots
+}
+
+/**
+ * Project-scoped skill roots for the given agents, inside projectDir.
+ * Agents without a project root (e.g. OpenClaw) are skipped. dsh and Codex
+ * share `.agents/skills`, so the list is deduped by root.
+ */
+export function projectRootsFor(agents, projectDir) {
+  const out = []
+  const seen = new Set()
+  for (const a of agents) {
+    if (!a.projectRoot) continue
+    const root = path.join(projectDir, a.projectRoot)
+    if (seen.has(root)) continue
+    seen.add(root)
+    out.push({ agent: a, root })
+  }
+  return out
 }
