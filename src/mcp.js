@@ -241,6 +241,21 @@ async function readJsonOrToml(target) {
   return readJsonServers(target.resolvedFile, target.key)
 }
 
+/** Write one server definition into a resolved target config (test hook friendly). */
+export async function writeServer(target, name, def) {
+  if (target.format === 'toml') {
+    await writeTomlServer(target.resolvedFile, target.key, name, def)
+  } else {
+    await writeJsonServer(target.resolvedFile, target.key, name, def)
+  }
+}
+
+/** Read all servers from a resolved target config (test hook friendly). */
+export async function readServers(target) {
+  const r = await readJsonOrToml(target)
+  return r.servers
+}
+
 /**
  * Copy the MCP server `name` from its source config into other targets.
  *

@@ -58,6 +58,7 @@ aipx install owner/repo                          # repo root or skills/ auto-det
 aipx install owner/repo#path:/skills/their-skill # subdirectory (same syntax as dsh)
 aipx install https://github.com/owner/repo/tree/v1.2/skills/x   # pinned ref
 aipx install ./my-skill                          # local directory
+aipx install owner/mcp-server                    # .mcp.json repos add MCP servers too
 aipx install owner/repo --project                # project-scoped: .claude/skills,
                                                  # .agents/skills, .github/skills, …
                                                  # committed with the repo for the team

@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- MCP-config payloads: `aipx install` now recognizes repos that ship a
+  `.mcp.json` / `mcp.json` (pure MCP server repos) and adds their server
+  definitions to the target agents' MCP configs (JSON merge + Codex TOML
+  writer). Tier policy applies: official configs by default, community with
+  `--all`/`--agents`.
+
 ## [0.2.0] — 2026-08-29
 
 ### Added

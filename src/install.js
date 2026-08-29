@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { detectAgents, projectRootsFor, userRootsFor } from './agents.js'
+import { AGENTS, detectAgents, projectRootsFor, userRootsFor } from './agents.js'
 import { detectPayload } from './detect.js'
 import { cleanup, downloadRepoTarball } from './github.js'
 import { recordInstall } from './manifest.js'
@@ -58,6 +58,12 @@ export async function install(sourceInput, opts = {}) {
   // temp stays alive until the install body below finishes: payload files are
   // copied (not just parsed), so cleanup happens in the finally block.
   try {
+    // MCP-config payloads install server definitions instead of skills.
+    if (payload.mcpServers && payload.mcpServers.length > 0) {
+      const res = await installMcpServers(payload, source, opts)
+      return res
+    }
+
     if (payload.skills.length === 0) {
       for (const hint of payload.hints) info(hint)
       throw new Error(
@@ -159,6 +165,71 @@ export async function install(sourceInput, opts = {}) {
   } finally {
     if (temp) cleanup(temp)
   }
+}
+
+/**
+ * Install MCP server definitions from an mcp-config payload into the target
+ * agents' MCP config files. Official-tier configs by default; --agents narrows.
+ */
+async function installMcpServers(payload, source, opts) {
+  const { mcpTargets, writeServer } = await import('./mcp.js')
+
+  const { MCP_TARGETS } = await import('./mcp.js')
+  let destinations
+  if (opts.agents) {
+    const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
+    const unknown = ids.filter((id) => !MCP_TARGETS.some((t) => t.agentId === id))
+    if (unknown.length > 0) {
+      throw new Error(`unknown agent id(s): ${unknown.join(', ')} — known MCP targets: ${MCP_TARGETS.map((t) => t.agentId).join(', ')}`)
+    }
+    destinations = mcpTargets(opts.mcpHome).filter((t) => ids.includes(t.agentId))
+  } else {
+    destinations = mcpTargets(opts.mcpHome).filter((t) => t.tier === 'official' || opts.all)
+  }
+
+  console.log()
+  ok(`detected MCP config with ${payload.mcpServers.length} server definition(s):`)
+  for (const s of payload.mcpServers) {
+    console.log(`    ${c.bold(s.name)}`)
+  }
+  console.log()
+  ok('target configs:')
+  for (const t of destinations) console.log(`    ${t.resolvedFile}`)
+  console.log()
+  for (const hint of payload.hints) info(hint)
+  console.log()
+
+  if (opts.dryRun) {
+    info('dry run — nothing written.')
+    for (const s of payload.mcpServers) {
+      for (const t of destinations) console.log(`    add ${s.name} → ${t.resolvedFile}`)
+    }
+    return { dryRun: true, plan: payload.mcpServers.length * destinations.length }
+  }
+
+  let created = 0
+  for (const server of payload.mcpServers) {
+    for (const t of destinations) {
+      await writeServer(t, server.name, server.def)
+      created += 1
+      ok(`added MCP server ${c.bold(server.name)} → ${t.resolvedFile}`)
+    }
+  }
+
+  if (created > 0) {
+    for (const server of payload.mcpServers) {
+      await recordInstall({
+        name: server.name,
+        description: 'MCP server',
+        source: source.label,
+        kind: 'mcp-config',
+        scope: 'user',
+        roots: destinations.map((t) => t.resolvedFile),
+      })
+    }
+  }
+
+  return { installed: created, skills: payload.mcpServers.map((s) => s.name) }
 }
 
 function truncate(s, n) {

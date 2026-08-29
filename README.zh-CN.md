@@ -54,6 +54,7 @@ aipx install owner/repo                          # 自动识别仓库根目录�
 aipx install owner/repo#path:/skills/their-skill # 子目录（与 dsh 相同的语法）
 aipx install https://github.com/owner/repo/tree/v1.2/skills/x   # 锁定 ref
 aipx install ./my-skill                          # 本地目录
+aipx install owner/mcp-server                    # .mcp.json 仓库也能安装 MCP 服务器
 aipx install owner/repo --project                # 项目级：.claude/skills、
                                                  # .agents/skills、.github/skills……
                                                  # 随仓库提交，全团队共享

@@ -100,6 +100,30 @@ export async function detectPayload(dir, source = null, repoRel = '') {
     }
   }
 
+  // MCP-config payloads: a repo that ships `.mcp.json` / `mcp.json` with a
+  // mcpServers object installs as MCP server definitions rather than skills.
+  let mcpServers = null
+  for (const candidate of ['.mcp.json', 'mcp.json']) {
+    const mcpPath = path.join(dir, candidate)
+    if (!(await exists(mcpPath))) continue
+    try {
+      const parsed = JSON.parse(await readFile(mcpPath, 'utf8'))
+      const section = parsed?.mcpServers
+      if (section && typeof section === 'object' && Object.keys(section).length > 0) {
+        mcpServers = Object.entries(section)
+          .filter(([, def]) => def && typeof def === 'object')
+          .map(([serverName, def]) => ({ name: normalizeSkillName(serverName), def }))
+        hints.push(
+          `MCP config detected (${candidate}) — ${mcpServers.length} server definition(s) will be added to the target agents' MCP configs`
+        )
+      }
+    } catch {
+      // unreadable mcp json — ignore, other detectors still run
+    }
+    break
+  }
+  if (mcpServers !== null) kinds.push('mcp-config')
+
   const unique = [...new Set(kinds)]
   if (unique.length === 0) {
     throw new Error(
@@ -113,7 +137,7 @@ export async function detectPayload(dir, source = null, repoRel = '') {
       ? 'dsh-plugin'
       : unique[0]
 
-  return { kind, kinds: unique, skills: dedupe(skills), hints }
+  return { kind, kinds: unique, skills: dedupe(skills), hints, mcpServers }
 }
 
 async function readSkillDir(skillDir) {
