@@ -63,6 +63,7 @@ aipx upgrade         # 从记录的来源重装已装技能（等价 --force）
 aipx list            # 按 Agent 列出已装技能
 aipx search deepseek # 精选注册表；加 --github 实时搜索 GitHub topics
 aipx lint skills     # 校验 SKILL.md 质量（frontmatter、触发描述、链接、嵌套）
+aipx new my-skill    # 脚手架生成可直接发布的双目标技能仓库
 aipx remove <name>   # 从所有 Agent 卸载
 aipx doctor          # 环境与 Agent 检测报告
 ```

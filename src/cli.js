@@ -2,6 +2,7 @@ import { doctor } from './doctor.js'
 import { install } from './install.js'
 import { lintPath } from './lint.js'
 import { list } from './list.js'
+import { newRepo } from './scaffold.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
 import { sync } from './sync.js'
@@ -18,6 +19,7 @@ ${c.bold('Usage')}
   aipx install <source> [flags]   Install a skill/plugin from GitHub or a local directory
   aipx sync [flags]               Mirror skills from ~/.agents/skills into every other agent
   aipx upgrade [name] [flags]     Re-install recorded skills from their source (all, or one)
+  aipx new <name> [flags]         Scaffold a dual-target skill repo (skills + Claude marketplace + dsh bundle)
   aipx list [--json]              Show installed skills per agent
   aipx search <query> [--github]  Search the curated registry (+ GitHub topics)
   aipx lint [path] [--json]       Validate SKILL.md quality (default: current directory)
@@ -42,7 +44,9 @@ ${c.bold('Flags')}
   --copy             sync: duplicate files instead of symlinking
   --dry-run          Show what would happen without writing
   --github           search: also query GitHub topics live
-  --json             machine-readable output (list)
+  --dir <path>       new: parent directory for the scaffold (default: current directory)
+  --owner <name>     new: GitHub username to bake into install lines
+  --json             machine-readable output (list, lint)
   --no-color         Disable colored output
 
 ${c.bold('Examples')}
@@ -50,6 +54,7 @@ ${c.bold('Examples')}
   aipx install owner/repo --project          # project skills, committed with the repo
   aipx sync                       # one copy of every skill, visible in every agent
   aipx upgrade                    # re-install everything from its recorded source
+  aipx new my-skill               # scaffold a publish-ready dual-target repo
   aipx list
   aipx doctor
 
@@ -58,7 +63,7 @@ Docs: https://github.com/zhangliang0115/ai-plugin#readme
 
 function parseFlags(argv) {
   const flags = { _: [] }
-  const valued = new Set(['--agents'])
+  const valued = new Set(['--agents', '--dir', '--owner'])
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--no-color') {
@@ -132,6 +137,11 @@ export async function main(argv) {
       }
       case 'upgrade': {
         await upgrade(flags._[1], flags)
+        return
+      }
+      case 'new': {
+        if (flags._[1] === undefined) throw new Error('usage: aipx new <name> — e.g. aipx new my-skill')
+        await newRepo(flags._[1], flags)
         return
       }
       case 'list': {

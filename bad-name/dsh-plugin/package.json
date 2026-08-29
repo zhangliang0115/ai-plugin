@@ -1,0 +1,33 @@
+{
+  "name": "bad-name-dsh",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness bundle for the bad-name skill",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "skills"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-skills"
+  ],
+  "author": "zhangliang0115",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -67,6 +67,7 @@ aipx upgrade         # re-install recorded skills from their source (--force sem
 aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
 aipx lint skills     # validate SKILL.md quality (frontmatter, triggers, links, nesting)
+aipx new my-skill    # scaffold a publish-ready dual-target skill repo
 aipx remove <name>   # uninstall everywhere
 aipx doctor          # environment + agent detection report
 ```

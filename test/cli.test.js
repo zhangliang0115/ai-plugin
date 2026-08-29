@@ -15,7 +15,7 @@ test('--version prints a semver', async () => {
 
 test('--help prints usage and mentions every command', async () => {
   const { stdout } = await execFileAsync(process.execPath, [BIN, '--help'])
-  for (const word of ['install', 'sync', 'list', 'search', 'remove', 'doctor']) {
+  for (const word of ['install', 'sync', 'upgrade', 'new', 'list', 'search', 'lint', 'remove', 'doctor']) {
     assert.ok(stdout.includes(word), `help mentions ${word}`)
   }
 })

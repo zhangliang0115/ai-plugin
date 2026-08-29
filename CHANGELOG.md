@@ -7,6 +7,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Added
 
+- `new <name>` — scaffold a publish-ready dual-target skill repo: `skills/`
+  source of truth, `.claude-plugin/` marketplace manifests, `dsh-plugin/`
+  bundle (with runtime skill registration), drift-check + sync scripts, CI
+  workflow that dogfoods `aipx lint`, and a README with the three install
+  lines pre-filled (`--owner` bakes your username; author from git config).
 - `lint [path] [--json]` — validate SKILL.md quality: frontmatter presence,
   kebab-case names (and directory-name mismatch), trigger-style descriptions
   (missing = error, short/over-limit = warning), body size (progressive
