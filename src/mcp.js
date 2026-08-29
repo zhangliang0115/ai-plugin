@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { AGENTS } from './agents.js'
-import { exists, HOME as OS_HOME, info, c, ok, warn } from './util.js'
+import { exists, expandTilde, HOME as OS_HOME, info, c, ok, warn } from './util.js'
 
 /**
  * Cross-agent MCP config inventory & sync.
@@ -23,6 +23,15 @@ export const MCP_TARGETS = [
   { agentId: 'codex', file: '~/.codex/config.toml', format: 'toml', key: 'mcp_servers', tier: 'official' },
   { agentId: 'copilot', file: '~/.copilot/mcp-config.json', format: 'json', key: 'mcpServers', tier: 'community' },
   { agentId: 'opencode', file: '~/.config/opencode/opencode.json', format: 'json', key: 'mcp', tier: 'community' },
+]
+
+/**
+ * Project-scoped MCP configs, used when `--project` is set. Claude Code's
+ * project file (.mcp.json) is the team-shared standard; Cursor follows.
+ */
+export const MCP_PROJECT_TARGETS = [
+  { agentId: 'claude-code', file: '.mcp.json', format: 'json', key: 'mcpServers', tier: 'official', project: true },
+  { agentId: 'cursor', file: '.cursor/mcp.json', format: 'json', key: 'mcpServers', tier: 'community', project: true },
 ]
 
 function agentLabel(agentId) {
@@ -175,24 +184,49 @@ export function mcpTargets(home) {
   return MCP_TARGETS.map((t) => resolveTarget(t, home))
 }
 
+function resolvedProjectTargets(projectDir) {
+  return MCP_PROJECT_TARGETS.map((t) => ({ ...t, resolvedFile: path.join(projectDir, t.file) }))
+}
+
+async function projectDirFrom(opts) {
+  const dir = opts.project === true ? process.cwd() : expandTilde(opts.project)
+  if (!(await exists(dir))) throw new Error(`project directory not found: ${dir}`)
+  return dir
+}
+
 export async function listMcp(opts = {}) {
   const out = {}
-  for (const target of mcpTargets(opts.home)) {
-    if (target.tier === 'community' && !opts.all && !opts.includeCommunity) continue
+  const includeCommunity = opts.all || opts.includeCommunity
+
+  const scan = async (target) => {
     let r
     try {
       r = await readJsonOrToml(target)
     } catch (e) {
       out[target.agentId] = { label: agentLabel(target.agentId), file: target.resolvedFile, error: e.message }
-      continue
+      return
     }
-    if (!r.exists) continue
+    if (!r.exists) return
     out[target.agentId] = {
       label: agentLabel(target.agentId),
       file: target.resolvedFile,
       format: target.format,
       servers: [...r.servers.entries()].map(([name, def]) => ({ name, def })),
     }
+  }
+
+  if (opts.project) {
+    const projectDir = await projectDirFrom(opts)
+    for (const target of resolvedProjectTargets(projectDir)) {
+      if (target.tier === 'community' && !includeCommunity) continue
+      await scan(target)
+    }
+    return out
+  }
+
+  for (const target of mcpTargets(opts.home)) {
+    if (target.tier === 'community' && !includeCommunity) continue
+    await scan(target)
   }
   return out
 }
@@ -215,10 +249,16 @@ async function readJsonOrToml(target) {
 export async function syncMcp(name, opts = {}) {
   if (!name) throw new Error('usage: aipx mcp sync <server-name>')
 
-  const targets = mcpTargets(opts.home)
-  const found = []
+  // sources: user configs always; project configs join the search in --project mode
+  const pool = mcpTargets(opts.home)
+  let projectDir = null
+  if (opts.project) {
+    projectDir = await projectDirFrom(opts)
+    pool.push(...resolvedProjectTargets(projectDir))
+  }
 
-  for (const target of targets) {
+  const found = []
+  for (const target of pool) {
     const r = await readJsonOrToml(target)
     if (r.servers.has(name)) found.push({ target, def: r.servers.get(name) })
   }
@@ -234,17 +274,26 @@ export async function syncMcp(name, opts = {}) {
     throw new Error(`"${name}" is not configured in "${opts.from}" — it was found in: ${found.map((f) => f.target.agentId).join(', ')}`)
   }
 
-  // destinations: explicit ids, or every other config aipx can write (official
-  // tier by default, community with --all)
+  // destinations
   let destinations
-  if (opts.agents) {
+  if (opts.project) {
+    destinations = resolvedProjectTargets(projectDir)
+    if (opts.agents) {
+      const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
+      destinations = destinations.filter((t) => ids.includes(t.agentId))
+    }
+  } else if (opts.agents) {
     const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
-    destinations = targets.filter((t) => ids.includes(t.agentId))
-    const unknown = ids.filter((id) => !targets.some((t) => t.agentId === id))
+    const unknown = ids.filter((id) => !MCP_TARGETS.some((t) => t.agentId === id))
     if (unknown.length > 0) throw new Error(`unknown agent id(s): ${unknown.join(', ')}`)
+    destinations = mcpTargets(opts.home).filter((t) => ids.includes(t.agentId))
   } else {
-    destinations = targets.filter((t) => t.agentId !== source.target.agentId && (t.tier === 'official' || opts.all))
+    destinations = mcpTargets(opts.home).filter(
+      (t) => t.agentId !== source.target.agentId && (t.tier === 'official' || opts.all)
+    )
   }
+  // never write back into the source file itself
+  destinations = destinations.filter((t) => t.resolvedFile !== source.target.resolvedFile)
   // opencode uses a different definition shape (command as array) — read-only
   // for now rather than writing something wrong
   destinations = destinations.filter((t) => {

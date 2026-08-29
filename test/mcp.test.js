@@ -122,6 +122,32 @@ test('mcp sync --dry-run writes nothing', async () => {
   await rm(home, { recursive: true, force: true })
 })
 
+test('mcp sync --project writes the project .mcp.json', async () => {
+  const home = await makeHome()
+  const project = await mkdtemp(path.join(tmpdir(), 'aipx-mcpproj-'))
+  await writeConfig(home, '.claude.json', JSON.stringify({ mcpServers: { fetch: { command: 'npx', args: ['-y', 'demo'] } } }))
+
+  const res = await syncMcp('fetch', { home, project })
+  assert.equal(res.synced, 1) // only claude-code has a project target by default
+
+  const mcpJson = JSON.parse(await readFile(path.join(project, '.mcp.json'), 'utf8'))
+  assert.equal(mcpJson.mcpServers.fetch.command, 'npx')
+  await rm(home, { recursive: true, force: true })
+  await rm(project, { recursive: true, force: true })
+})
+
+test('mcp list --project reads the project .mcp.json', async () => {
+  const home = await makeHome()
+  const project = await mkdtemp(path.join(tmpdir(), 'aipx-mcplist-'))
+  await writeConfig(project, '.mcp.json', JSON.stringify({ mcpServers: { local: { command: './run.sh' } } }))
+
+  const out = await listMcp({ home, project })
+  assert.equal(out['claude-code'].servers[0].name, 'local')
+  assert.ok(out['claude-code'].file.endsWith('.mcp.json'))
+  await rm(home, { recursive: true, force: true })
+  await rm(project, { recursive: true, force: true })
+})
+
 test('remote (url) servers skip the codex writer with a warning', async () => {
   const home = await makeHome()
   await writeConfig(home, '.claude.json', JSON.stringify({ mcpServers: { web: { type: 'http', url: 'https://x' } } }))
