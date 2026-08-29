@@ -105,10 +105,12 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 
 | Skill | Teaches your agent to |
 |---|---|
-| `skill-author` | write SKILL.md skills that load in every harness |
+| `skill-author` | write SKILL.md skills that load in every harness — incl. the tier-shadowing and discovery gotchas generic guides miss |
+| `skill-portability-audit` | audit "works in Claude but not in dsh" failures: collisions, shadowing, trigger quality, per-agent smoke matrix |
 | `dsh-plugin-dev` | package & publish DeepSeek Harness bundles (cordis.patch.yml, ctx.skills.register, the git-install gotchas) |
-| `claude-plugin-dev` | publish Claude Code plugins & marketplaces |
+| `claude-plugin-dev` | publish Claude Code plugins & marketplaces with the dual-target pattern (one repo → every agent) |
 | `deepseek-cost-router` | route work between deepseek-chat / deepseek-reasoner to cut API cost |
+| `deepseek-migration` | migrate an agent setup from OpenAI/Anthropic to DeepSeek — caching, tool-calling, cost levers, dsh option |
 
 ## Design principles
 

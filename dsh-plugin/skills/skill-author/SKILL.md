@@ -1,10 +1,13 @@
 ---
 name: skill-author
 description: >-
-  Write, structure, and publish a high-quality SKILL.md agent skill that works
-  across Claude Code, DeepSeek Harness (dsh), Codex CLI, Gemini CLI, Copilot and
-  Cursor. Use when creating a new skill, fixing a skill that fails to load, or
-  preparing a skill repo for distribution.
+  Write, structure, and publish a SKILL.md skill that works across every
+  harness — Claude Code, DeepSeek Harness (dsh), Codex CLI, Gemini CLI,
+  Copilot, Cursor — including the cross-agent gotchas generic guides miss:
+  tier shadowing between project and user roots, discovery rules, and
+  trigger-description design. Use when creating a new skill, fixing a skill
+  that fails to load in some agents, or preparing a skill repo for
+  distribution.
 ---
 
 # Authoring a cross-agent SKILL.md skill

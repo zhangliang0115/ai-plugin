@@ -2,8 +2,11 @@
 name: claude-plugin-dev
 description: >-
   Package and publish a Claude Code plugin and marketplace (.claude-plugin/
-  manifests, skills, commands, agents, hooks). Use when creating a Claude Code
-  plugin, setting up a marketplace repo, or installing plugins into Claude Code.
+  manifests, skills, commands, agents, hooks) with a dual-target twist: the
+  same repo simultaneously serves DeepSeek Harness (dsh), Codex, Gemini CLI
+  and Copilot via plain skills and a dsh bundle. Use when creating a Claude
+  Code plugin, setting up a marketplace repo, or making one repo installable
+  across every agent.
 ---
 
 # Building a Claude Code plugin & marketplace
