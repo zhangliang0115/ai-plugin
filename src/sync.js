@@ -31,8 +31,9 @@ export async function sync(opts = {}) {
     )
   }
 
-  const agents = await resolveTargets(opts)
-  const targets = await resolveTargets2(agents, primary, opts)
+  // Explicit roots (test hook / programmatic use) bypass agent detection.
+  const targets =
+    opts.roots ?? (await resolveTargets2(await resolveTargets(opts), primary, opts))
 
   if (targets.length === 0) {
     info('no other agent roots to sync into — primary root covers every detected agent already')

@@ -53,8 +53,9 @@ export async function install(sourceInput, opts = {}) {
     )
   }
 
-  const agents = await resolveTargets(opts)
-  const roots = await resolveRoots(agents, opts)
+  // Explicit roots (test hook / programmatic use) bypass agent detection.
+  const agents = opts.roots ? opts.roots.map((r) => r.agent) : await resolveTargets(opts)
+  const roots = opts.roots ?? (await resolveRoots(agents, opts))
 
   console.log()
   ok(`detected ${payload.kind} with ${payload.skills.length} skill(s):`)
