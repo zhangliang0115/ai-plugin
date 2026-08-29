@@ -20,6 +20,18 @@ test('--help prints usage and mentions every command', async () => {
   }
 })
 
+test('search surfaces curated registry entries (offline path)', async () => {
+  const { stdout } = await execFileAsync(process.execPath, [BIN, 'search', 'deepseek', '--no-color'])
+  assert.ok(stdout.includes('curated registry'), 'prints the registry section')
+  assert.ok(stdout.includes('zhangliang0115/ai-plugin'), 'lists this repo')
+  assert.ok(stdout.includes('deepseek-ai/deepseek-harness'), 'lists the dsh harness entry')
+})
+
+test('search with no match still exits cleanly', async () => {
+  const { stdout } = await execFileAsync(process.execPath, [BIN, 'search', 'zzz-no-such-thing-xyz', '--no-color'])
+  assert.ok(stdout.includes('0 match(es)'))
+})
+
 test('unknown command fails with exit code 1', async () => {
   await assert.rejects(
     () => execFileAsync(process.execPath, [BIN, 'frobnicate']),
