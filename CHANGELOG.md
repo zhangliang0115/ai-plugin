@@ -7,6 +7,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 
 ### Added
 
+- Registry install smoke: a weekly CI run executes every registry `aipx install`
+  line in dry-run mode against live GitHub (isolated config, no writes) and
+  posts a per-entry summary — dead install lines are caught before users hit
+  them.
 - Registry validation bot: CI (and `npm run validate-registry`) checks every
   `registry/index.json` entry against the GitHub API — repo exists and is
   public, schema fields present, install lines on installable kinds, no

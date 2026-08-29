@@ -31,10 +31,10 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] Registry submissions via PR bot checks — CI validates every entry against the GitHub API (repo exists, schema coherent, no duplicates)
 - [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
 
-## v0.4
+## v0.4 — in progress
 
-- [ ] Quality ratings for registry entries (install smoke tests in CI)
-- [ ] Registry website with per-agent install snippets
+- [x] Registry install smoke: weekly CI run resolves every `aipx install` line against live GitHub (dry-run, isolated config); failures surface as warnings + job summary
+- [ ] Registry website with per-agent install snippets — static generator + Pages pipeline shipped; live URL pending DNS (see issue #2)
 - [ ] Skill analytics hooks (opt-in)
 
 ## Non-goals
