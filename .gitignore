@@ -18,3 +18,4 @@ dist/
 
 # aipx local test scratch
 /tmp/
+site/
