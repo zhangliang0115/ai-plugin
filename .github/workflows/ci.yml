@@ -24,6 +24,7 @@ jobs:
       - run: npm run check-drift
       - run: node bin/aipx.js --version
       - run: node bin/aipx.js --help > /dev/null
+      - run: node bin/aipx.js lint skills
 
   smoke-windows:
     runs-on: windows-latest

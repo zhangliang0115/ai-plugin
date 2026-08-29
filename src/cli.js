@@ -1,11 +1,12 @@
 import { doctor } from './doctor.js'
 import { install } from './install.js'
+import { lintPath } from './lint.js'
 import { list } from './list.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
 import { sync } from './sync.js'
 import { upgrade } from './upgrade.js'
-import { c, fail } from './util.js'
+import { c, fail, ok, warn } from './util.js'
 
 export const VERSION = '0.1.0'
 
@@ -19,6 +20,7 @@ ${c.bold('Usage')}
   aipx upgrade [name] [flags]     Re-install recorded skills from their source (all, or one)
   aipx list [--json]              Show installed skills per agent
   aipx search <query> [--github]  Search the curated registry (+ GitHub topics)
+  aipx lint [path] [--json]       Validate SKILL.md quality (default: current directory)
   aipx remove <name>              Uninstall a skill from every agent
   aipx doctor                     Check your environment and detect agents
   aipx --help | --version
@@ -140,6 +142,42 @@ export async function main(argv) {
       case 'search': {
         if (rest.length === 0) throw new Error('usage: aipx search <query>')
         await search(rest.join(' '), flags)
+        return
+      }
+      case 'lint': {
+        const target = flags._[1] ?? '.'
+        const { results, orphans } = await lintPath(target)
+        if (flags.json) {
+          console.log(JSON.stringify({ target, orphans, results }, null, 2))
+        } else {
+          let errors = 0
+          let warnings = 0
+          for (const r of results) {
+            console.log(`\n${c.bold(r.name)} ${r.dir}`)
+            for (const e of r.errors) {
+              errors += 1
+              console.log(`  ${c.red('✗ ' + e)}`)
+            }
+            for (const w of r.warnings) {
+              warnings += 1
+              console.log(`  ${c.yellow('! ' + w)}`)
+            }
+            if (r.errors.length === 0 && r.warnings.length === 0) {
+              console.log(`  ${c.green('clean')}`)
+            }
+          }
+          for (const o of orphans) {
+            errors += 1
+            console.log(`\n${c.red('✗ ' + o + ' — missing SKILL.md')}`)
+          }
+          console.log()
+          if (errors > 0) {
+            fail(`${errors} error(s), ${warnings} warning(s) in ${results.length} skill(s)`)
+            process.exitCode = 1
+          } else if (results.length > 0) {
+            ok(`${results.length} skill(s) linted — ${warnings} warning(s)`)
+          }
+        }
         return
       }
       case 'remove': {

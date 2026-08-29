@@ -66,6 +66,7 @@ aipx sync            # link ~/.agents/skills into every other detected agent roo
 aipx upgrade         # re-install recorded skills from their source (--force semantics)
 aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
+aipx lint skills     # validate SKILL.md quality (frontmatter, triggers, links, nesting)
 aipx remove <name>   # uninstall everywhere
 aipx doctor          # environment + agent detection report
 ```
