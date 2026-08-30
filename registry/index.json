@@ -1,14 +1,19 @@
 {
   "version": 1,
-  "updated": "2026-08-29",
-  "note": "Curated starting points for AI agent skills and plugins. Every entry was verified to exist at submission time. PRs welcome — see CONTRIBUTING.md.",
+  "updated": "2026-08-31",
+  "note": "Curated starting points for AI agent skills and plugins. Every entry was verified to exist at submission time. Collections bundle verified entries toward a goal — install a whole stack with one command. PRs welcome — see CONTRIBUTING.md.",
   "plugins": [
     {
       "name": "ai-plugin-toolkit",
       "repo": "zhangliang0115/ai-plugin",
       "kind": "skills",
       "description": "Cross-agent skills: skill authoring, DeepSeek Harness (dsh) plugin development, Claude Code plugin development, DeepSeek model cost routing. This repo — also a Claude Code marketplace and a dsh bundle.",
-      "topics": ["agent-skills", "dsh-plugin", "claude-code", "deepseek"],
+      "topics": [
+        "agent-skills",
+        "dsh-plugin",
+        "claude-code",
+        "deepseek"
+      ],
       "install": "aipx install zhangliang0115/ai-plugin"
     },
     {
@@ -16,7 +21,12 @@
       "repo": "deepseek-ai/deepseek-harness",
       "kind": "harness",
       "description": "DeepSeek Harness (dsh): DeepSeek AI's open-source agent harness, everything-is-a-plugin architecture on Cordis. The reason ~/.agents/skills matters.",
-      "topics": ["dsh", "deepseek", "agent", "plugins"],
+      "topics": [
+        "dsh",
+        "deepseek",
+        "agent",
+        "plugins"
+      ],
       "install": "npx @deepseek-ai/dsh web"
     },
     {
@@ -24,7 +34,11 @@
       "repo": "anthropics/skills",
       "kind": "skills",
       "description": "Anthropic's official collection of Agent Skills (SKILL.md) — the reference implementations for the cross-agent skill format.",
-      "topics": ["agent-skills", "claude-code", "skills"],
+      "topics": [
+        "agent-skills",
+        "claude-code",
+        "skills"
+      ],
       "install": "aipx install anthropics/skills"
     },
     {
@@ -32,7 +46,11 @@
       "repo": "JimmyLv/bibigpt-skill",
       "kind": "skills",
       "description": "Summarize YouTube/Bilibili videos and podcasts inside dsh and Claude Code; a working example of a dual-target repo (skills/ + dsh-plugin/).",
-      "topics": ["dsh-plugin", "agent-skills", "video-summary"],
+      "topics": [
+        "dsh-plugin",
+        "agent-skills",
+        "video-summary"
+      ],
       "install": "aipx install JimmyLv/bibigpt-skill"
     },
     {
@@ -40,7 +58,11 @@
       "repo": "nexu-io/open-design",
       "kind": "app",
       "description": "Open-source design agent that runs on dsh, Claude Code, Codex and friends — composable skills and design systems for the agent era.",
-      "topics": ["dsh-plugin", "design", "deepseek"],
+      "topics": [
+        "dsh-plugin",
+        "design",
+        "deepseek"
+      ],
       "install": "see repo README"
     },
     {
@@ -48,8 +70,42 @@
       "repo": "VoltAgent/awesome-agent-skills",
       "kind": "awesome",
       "description": "1000+ curated agent skills from official dev teams and the community, compatible with Claude Code, Codex, Gemini CLI, Cursor and more.",
-      "topics": ["awesome", "agent-skills", "skills"],
+      "topics": [
+        "awesome",
+        "agent-skills",
+        "skills"
+      ],
       "install": "browse and aipx install <owner>/<repo>"
+    }
+  ],
+  "collections": [
+    {
+      "name": "deepseek-coding",
+      "description": "A DeepSeek-first coding setup: the harness, cost routing know-how, and the skills to build dsh plugins",
+      "entries": [
+        {
+          "source": "zhangliang0115/ai-plugin",
+          "why": "cross-agent skills incl. deepseek-cost-router and dsh-plugin-dev"
+        },
+        {
+          "source": "deepseek-ai/deepseek-harness",
+          "why": "the DeepSeek agent harness itself (dsh)"
+        }
+      ]
+    },
+    {
+      "name": "getting-started",
+      "description": "New to agent skills? Install the official reference set plus the aipx toolkit",
+      "entries": [
+        {
+          "source": "anthropics/skills",
+          "why": "Anthropic's official skill collection — the format reference"
+        },
+        {
+          "source": "zhangliang0115/ai-plugin",
+          "why": "cross-agent authoring, auditing and cost-routing skills"
+        }
+      ]
     }
   ]
 }

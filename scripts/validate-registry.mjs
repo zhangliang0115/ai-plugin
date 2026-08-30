@@ -54,6 +54,36 @@ for (const [i, entry] of entries.entries()) {
   }
 }
 
+// collections must reference entries that exist in the registry
+const knownRepos = new Set(entries.map((e) => e.repo).filter(Boolean))
+const seenCollections = new Set()
+for (const [i, col] of (registry.collections ?? []).entries()) {
+  const label = `collection ${i} (${col.name ?? 'unnamed'})`
+  for (const field of ['name', 'description']) {
+    if (typeof col[field] !== 'string' || col[field].trim() === '') {
+      errors.push(`${label}: missing or empty "${field}"`)
+    }
+  }
+  if (col.name) {
+    if (seenCollections.has(col.name)) {
+      errors.push(`${label}: duplicate collection name "${col.name}"`)
+    }
+    seenCollections.add(col.name)
+  }
+  if (!Array.isArray(col.entries) || col.entries.length === 0) {
+    errors.push(`${label}: needs a non-empty "entries" array`)
+    continue
+  }
+  for (const e of col.entries) {
+    if (!knownRepos.has(e.source)) {
+      errors.push(`${label}: entry source "${e.source}" is not in the registry's plugins list`)
+    }
+    if (typeof e.why !== 'string' || e.why.trim() === '') {
+      errors.push(`${label}: entry "${e.source}" needs a "why" line`)
+    }
+  }
+}
+
 // GitHub existence checks — sequential with a small delay to stay friendly to
 // the unauthenticated rate limit.
 const headers = {

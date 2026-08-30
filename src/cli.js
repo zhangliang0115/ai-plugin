@@ -2,6 +2,7 @@ import { doctor } from './doctor.js'
 import { install } from './install.js'
 import { lintPath } from './lint.js'
 import { list } from './list.js'
+import { listCollections, runCollection, showCollection } from './collection.js'
 import { listMcp, syncMcp } from './mcp.js'
 import { newRepo } from './scaffold.js'
 import { remove } from './remove.js'
@@ -19,6 +20,7 @@ ${c.bold('Usage')}
   aipx install <source> [flags]   Install a skill/plugin from GitHub or a local directory
   aipx upgrade [name] [flags]     Re-install recorded skills from their source (all, or one)
   aipx new <name> [flags]         Scaffold a dual-target skill repo (skills + Claude marketplace + dsh bundle)
+  aipx collection [name] [--run]  Browse curated collections; --run installs the whole stack
   aipx list [--json]              Show installed skills per agent
   aipx search <query> [--github]  Search the curated registry (+ GitHub topics)
   aipx lint [path] [--json]       Validate SKILL.md quality (default: current directory)
@@ -82,6 +84,8 @@ function parseFlags(argv) {
       flags.dryRun = true
     } else if (a === '--all') {
       flags.all = true
+    } else if (a === '--run') {
+      flags.run = true
     } else if (a === '--github') {
       flags.github = true
     } else if (a === '--project') {
@@ -251,6 +255,20 @@ export async function main(argv) {
       case 'remove': {
         if (rest.length === 0) throw new Error('usage: aipx remove <skill-name>')
         await remove(rest[0])
+        return
+      }
+      case 'collection': {
+        const name = flags._[1]
+        if (name === undefined) {
+          const cols = await listCollections()
+          if (flags.json) console.log(JSON.stringify(cols, null, 2))
+          return
+        }
+        if (flags.run) {
+          await runCollection(name, flags)
+          return
+        }
+        await showCollection(name)
         return
       }
       case 'doctor': {
