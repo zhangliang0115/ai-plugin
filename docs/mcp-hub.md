@@ -58,6 +58,11 @@ Real session against three official stdio servers
 ← { "entities": [], "relations": [] }        ← real downstream execution
 ```
 
+**Retrieval quality**: the lexical scorer scores 8/10 top-1 on a 10-query
+natural-language set against the filesystem server (`scripts/eval-search.mjs`);
+the two misses are pure vocabulary gaps (folder↔directory) — the vector
+search use case. Stopwords are filtered so they cannot dilute scoring.
+
 Resilience note: a downstream that fails to boot (bad env, missing package)
 shows up in `mcp_status` as an error row while every other server keeps
 serving — the hub degrades per-server, not globally.

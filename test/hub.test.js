@@ -31,6 +31,17 @@ test('LexicalIndex ranks matching entries and drops unrelated', async () => {
 
   assert.deepEqual(await idx.search('cooking recipe', 5), [])
 })
+test('LexicalIndex ignores stopwords so they cannot dilute scoring', async () => {
+  const idx = new LexicalIndex()
+  await idx.build([
+    { id: 'fs/edit_file', text: 'fs edit_file Performs exact string replacement in a file' },
+    { id: 'fs/read_file', text: 'fs read_file Read the complete contents of a file' },
+  ])
+  // "edit part of a file" — part/of/a are stopwords; without filtering, the
+  // -1s let read_file outrank edit_file
+  const r = await idx.search('edit part of a file', 2)
+  assert.equal(r[0].id, 'fs/edit_file')
+})
 
 
 // ---- hub end-to-end against a real child fixture ----

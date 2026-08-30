@@ -11,11 +11,22 @@ import { StdioDownstream } from './downstream.js'
  * registered.
  */
 
+// Common English fillers that dilute lexical scoring: "show me what is in
+// this folder" would otherwise accrue more -1s than the query earns +s. Kept
+// deliberately small; vocab gaps (folder↔directory) are what vector search
+// is for.
+const STOPWORDS = new Set([
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'it', 'this', 'that',
+  'in', 'on', 'of', 'to', 'for', 'from', 'by', 'at', 'with', 'and', 'or',
+  'me', 'my', 'your', 'i', 's', 'what', 'which', 'how', 'show', 'some',
+  'new', 'can', 'do', 'part',
+])
+
 export function tokenize(text) {
   return String(text ?? '')
     .toLowerCase()
     .split(/[^a-z0-9\u4e00-\u9fff]+/)
-    .filter((t) => t.length > 0)
+    .filter((t) => t.length > 0 && !STOPWORDS.has(t))
 }
 
 export function createHub({ servers, log = () => {}, downstreamFactory, searchIndex } = {}) {
