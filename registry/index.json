@@ -76,6 +76,18 @@
         "skills"
       ],
       "install": "browse and aipx install <owner>/<repo>"
+    },
+    {
+      "name": "dsh-desktop",
+      "repo": "anywhere-labs/dsh-desktop",
+      "kind": "app",
+      "description": "Modern desktop client for the DeepSeek Harness (dsh) plugin ecosystem — everything is a plugin, including the desktop",
+      "topics": [
+        "dsh-plugin",
+        "desktop",
+        "deepseek"
+      ],
+      "install": "see repo README"
     }
   ],
   "collections": [
@@ -90,6 +102,10 @@
         {
           "source": "deepseek-ai/deepseek-harness",
           "why": "the DeepSeek agent harness itself (dsh)"
+        },
+        {
+          "source": "nexu-io/open-design",
+          "why": "the flagship dsh ecosystem app — see how a large dsh plugin is built"
         }
       ]
     },

@@ -43,8 +43,8 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 
 ## Later
 
+- [x] Registry collections — curated best-of bundles (`aipx collection` / `--run` installs the whole stack; starters: deepseek-coding, getting-started)
 - [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
-- [ ] Registry collections — curated best-of entries users can compose a personal stack from (started with `registry/index.json`)
 - [ ] Skill analytics hooks (opt-in)
 
 ## Non-goals

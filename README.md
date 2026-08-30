@@ -116,7 +116,7 @@ aipx mcp serve         # speak MCP over stdio; wire this into any agent:
 
 Downstream servers are spawned on demand and reused; remote (HTTP) servers
 and vector search (pluggable index, e.g. a [zvec](https://github.com/alibaba/zvec)
-sidecar) are on the roadmap. Docs: [MCP hub guide](docs/mcp-hub.md).
+sidecar) are on the roadmap. Docs: [MCP hub guide](docs/mcp-hub.md) · [vector search design](docs/mcp-hub-vector-search.md).
 
 ## What's bundled (the toolkit)
 
