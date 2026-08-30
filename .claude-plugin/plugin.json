@@ -1,6 +1,6 @@
 {
   "name": "ai-plugin-toolkit",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Cross-agent skills: skill authoring, DeepSeek Harness (dsh) plugin development, Claude Code plugin development, and DeepSeek model cost routing.",
   "author": "zhangliang0115",
   "keywords": [

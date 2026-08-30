@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.4.2] — 2026-08-31
+
+### Fixed
+
+- **`aipx --version` reported 0.1.0 since v0.1.0** — the CLI's hardcoded
+  VERSION was never bumped across releases. Version now lives in one place
+  (`src/version.js`), a regression test pins package.json to it, and
+  `aipx doctor` compares against the latest GitHub release.
+
 ## [0.4.1] — 2026-08-31
 
 ### Fixed

@@ -86,8 +86,44 @@ check('symlinks supported (used by `aipx sync`)', async () => {
   }
 })
 
+const INIT_TIMEOUT = 30_000
+
+function isNewer(candidate, current) {
+  const c = candidate.split('.').map(Number)
+  const u = current.split('.').map(Number)
+  for (let i = 0; i < 3; i += 1) {
+    if ((c[i] ?? 0) !== (u[i] ?? 0)) return (c[i] ?? 0) > (u[i] ?? 0)
+  }
+  return false
+}
+
 export async function doctor() {
   const agents = await detectAgents()
+
+  console.log(`\ninstalled aipx:`)
+  const { VERSION, REPO } = await import('./version.js')
+  console.log(`  aipx ${VERSION}`)
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'aipx-doctor' },
+    })
+    clearTimeout(timer)
+    if (res.ok) {
+      const latest = (await res.json()).tag_name?.replace(/^v/, '')
+      if (latest && isNewer(latest, VERSION)) {
+        warn(`a newer release exists: v${latest} (you are on ${VERSION}) — re-run the install command to update`)
+      } else {
+        ok(`up to date with the latest release (v${VERSION})`)
+      }
+    } else {
+      info(`could not check the latest release (HTTP ${res.status})`)
+    }
+  } catch {
+    info('could not reach the GitHub API for a release check')
+  }
 
   console.log(`\nenvironment:`)
   for (const { name, fn } of CHECKS) {

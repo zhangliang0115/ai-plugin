@@ -8,9 +8,9 @@ import { newRepo } from './scaffold.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
 import { upgrade } from './upgrade.js'
+import { VERSION } from './version.js'
 import { c, fail, info, ok, warn } from './util.js'
 
-export const VERSION = '0.1.0'
 
 const HELP = `
 ${c.bold('aipx')} — install any AI agent skill/plugin into every agent, once.
