@@ -32,29 +32,35 @@ you can edit by hand.
 
 ## Verified end-to-end
 
-Real session against the official
-[@modelcontextprotocol/server-filesystem](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem)
-(stdout only; logs on stderr):
+Real session against three official stdio servers
+([filesystem](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem),
+[memory](https://www.npmjs.com/package/@modelcontextprotocol/server-memory),
+[sequential-thinking](https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking)):
 
 ```console
-$ aipx mcp import && aipx mcp serve
-hub config: 1 server(s) imported, 1 registered total
-
-→ tools/call mcp_search {"query": "read file", "limit": 2}
-← [
-     { "id": "filesystem/read_file",      "description": "Read the complete contents of a file…" },
-     { "id": "filesystem/read_text_file", "description": "Read the complete contents of a file fro…" }
-   ]                                    + each tool's full inputSchema
-
-→ tools/call mcp_call {"tool": "filesystem/read_file", "arguments": {"path": "…/hello.txt"}}
-← "hello from aipx mcp hub"
-
 → tools/call mcp_status
-← [{ "name": "filesystem", "ready": true, "tools": 14 }]
+← [
+     { "name": "filesystem", "ready": true, "tools": 14 },
+     { "name": "memory",     "ready": true, "tools": 9  },
+     { "name": "thinking",   "ready": true, "tools": 1  }
+   ]   ← 24 downstream tools aggregated; the model saw 4 definitions
+
+→ tools/call mcp_search {"query": "read file"}
+← ["filesystem/read_file", "filesystem/read_text_file"]
+
+→ tools/call mcp_search {"query": "remember knowledge graph"}
+← ["memory/read_graph", "memory/create_entities", "memory/create_relations"]
+
+→ tools/call mcp_search {"query": "think step by step reasoning"}
+← ["thinking/sequentialthinking"]
+
+→ tools/call mcp_call {"tool": "memory/read_graph"}
+← { "entities": [], "relations": [] }        ← real downstream execution
 ```
 
-Four meta-tool definitions in context — while 14 downstream tools (and any
-number of further servers) stay out of it until searched for.
+Resilience note: a downstream that fails to boot (bad env, missing package)
+shows up in `mcp_status` as an error row while every other server keeps
+serving — the hub degrades per-server, not globally.
 
 ## The meta tools
 

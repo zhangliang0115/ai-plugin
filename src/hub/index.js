@@ -48,11 +48,13 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
   const makeStdio = (name, def) => new StdioDownstream(name, def, log)
   const factory = downstreamFactory ?? makeStdio
   const downstreams = new Map()
-  const toolIndex = new Map() // toolKey -> { server, name, description, inputSchema }
+  let toolIndex = new Map() // toolKey -> { server, name, description, inputSchema }
   let refreshed = false
 
   async function refresh() {
-    toolIndex.clear()
+    // build a fresh index, then swap — concurrent searches never see a
+    // half-cleared catalog
+    const next = new Map()
     const results = []
     for (const [name, def] of Object.entries(servers)) {
       let d = downstreams.get(name)
@@ -63,7 +65,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
       try {
         const tools = await d.listTools()
         for (const tool of tools) {
-          toolIndex.set(`${name}/${tool.name}`, {
+          next.set(`${name}/${tool.name}`, {
             server: name,
             name: tool.name,
             description: tool.description ?? '',
@@ -75,6 +77,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
         results.push({ name, tools: 0, status: `error: ${e.message}` })
       }
     }
+    toolIndex = next
     refreshed = true
     return results
   }
