@@ -1,12 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { readFile } from 'node:fs/promises'
+import { readFile, mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { loadHubConfig, saveHubConfig } from '../src/hub/config.js'
 
 test('saveHubConfig writes a loadable config (no directory-for-file regression)', async () => {
   const prev = process.env.AIPX_CONFIG_DIR
-  const dir = await (await import('node:fs/promises')).mkdtemp(path.join(process.env.TMPDIR ?? '/tmp', 'aipx-hubcfg-'))
+  const dir = await mkdtemp(path.join(tmpdir(), 'aipx-hubcfg-'))
   process.env.AIPX_CONFIG_DIR = dir
   try {
     await saveHubConfig({ servers: { fs: { command: 'npx', args: ['-y', 'x'] } } })
