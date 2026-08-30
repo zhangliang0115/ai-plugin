@@ -61,6 +61,17 @@ Embeddings for the catalog come from a local model (e.g. a small
 sentence-transformers build) or an embedding API — the sidecar owns that
 choice; the hub only ever sends text.
 
+## Reference sidecar
+
+`sidecars/zvec_sidecar.py` is a protocol-complete Python reference: it
+implements build/search and ships with an idf-weighted TF engine so the
+protocol works out of the box. The zvec wiring points are marked TODO inside
+`ZvecEngine` — when the zvec Python API stabilizes, wire embeddings + ANN
+into those two hooks and the hub needs no changes.
+
+Cross-language interop is verified: the Node `SidecarIndex` client drives the
+Python sidecar end-to-end (build → ranked search with idf weighting).
+
 ## Selection policy
 
 The hub prefers the sidecar when configured (`mcp-hub.json`:
@@ -78,7 +89,8 @@ erroring — search must never hard-fail because an optional enhancer is down.
 
 ## Milestones
 
-1. `SidecarIndex` implementing the contract over the draft protocol
-2. Fixture sidecar (python, zvec) + contract conformance tests shared with `LexicalIndex`
-3. Config plumbing + fallback policy
+1. ~~`SidecarIndex` implementing the contract over the draft protocol~~ — shipped (`src/hub/sidecar.js`)
+2. ~~Protocol conformance test~~ — `test/hub-sidecar.test.js` (mock sidecar fixture) + cross-language smoke against `sidecars/zvec_sidecar.py`
+3. Config plumbing + fallback policy — shipped (`withLexicalFallback` + `mcp-hub.json` `search.sidecar`)
 4. Evaluation harness: 20 real queries, lexical vs vector, side-by-side
+5. Reference sidecar: `sidecars/zvec_sidecar.py` — protocol-complete (tf engine by default, zvec wiring points marked TODO)
