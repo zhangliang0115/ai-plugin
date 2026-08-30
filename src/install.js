@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { AGENTS, detectAgents, projectRootsFor, userRootsFor } from './agents.js'
+import { AGENTS, projectRootsFor, SYNC_PRIMARY } from './agents.js'
 import { detectPayload } from './detect.js'
 import { cleanup, downloadRepoTarball } from './github.js'
 import { recordInstall } from './manifest.js'
@@ -19,14 +19,17 @@ import {
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 
 /**
- * Install a skill/plugin payload into every detected agent's skill root.
+ * Install a skill/plugin payload.
+ *
+ * User scope (default): one copy into the shared standard root
+ * `~/.agents/skills` — read natively by DeepSeek Harness (dsh) and Codex CLI.
+ * `--project [path]` instead writes team-shared copies into the project's
+ * per-agent roots (.claude/skills, .agents/skills, .github/skills, …).
  *
  * opts:
- *   agents   comma-separated agent ids (overrides detection)
- *   all      include community-tier agents during detection
- *   project  true (cwd) or a directory path → install into project-scoped
- *            roots (.claude/skills, .agents/skills, .github/skills, …)
- *            instead of user roots
+ *   agents   comma-separated agent ids — narrows the project roots
+ *   all      include community-tier project roots
+ *   project  true (cwd) or a directory path → project-scoped install
  *   force    overwrite skills that already exist at a target
  *   dryRun   print the plan without writing anything
  *   roots    explicit absolute roots (used by tests)
@@ -71,8 +74,7 @@ export async function install(sourceInput, opts = {}) {
       )
     }
 
-    const agents = opts.roots ? opts.roots.map((r) => r.agent) : await resolveTargets(opts)
-    const roots = opts.roots ?? (await resolveRoots(agents, opts))
+    const roots = opts.roots ?? (await resolveRoots(opts))
 
     console.log()
     ok(`detected ${payload.kind} with ${payload.skills.length} skill(s):`)
@@ -157,7 +159,7 @@ export async function install(sourceInput, opts = {}) {
       }
     }
 
-    for (const a of agents) {
+    for (const a of roots.map((r) => r.agent)) {
       if (a.note) info(`${a.label}: ${a.note}`)
     }
 
@@ -242,40 +244,31 @@ function truncate(s, n) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s
 }
 
-async function resolveTargets(opts) {
-  const { AGENTS } = await import('./agents.js')
-  if (opts.agents) {
-    const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
-    const unknown = ids.filter((id) => !AGENTS.some((a) => a.id === id))
-    if (unknown.length > 0) {
-      throw new Error(
-        `unknown agent id(s): ${unknown.join(', ')} — known ids: ${AGENTS.map((a) => a.id).join(', ')}`
-      )
-    }
-    return AGENTS.filter((a) => ids.includes(a.id))
-  }
-  // Project installs commit skills into the repo for the whole team, so they
-  // target every official-tier agent with a project root regardless of what
-  // is installed on this machine; community tiers stay opt-in.
-  if (opts.project) {
-    return AGENTS.filter((a) => a.projectRoot && (a.tier === 'official' || opts.all))
-  }
-  const detected = await detectAgents()
-  const targets = detected.filter((a) => a.installed && (a.tier === 'official' || opts.all))
-  if (targets.length === 0) {
-    throw new Error(
-      'no installed agents detected — pass --agents <id,id> to choose targets explicitly, or --all to write every known root'
-    )
-  }
-  return targets
+const SHARED_ROOT = {
+  agent: {
+    id: 'shared',
+    label: 'Shared skills root (~/.agents/skills — read natively by dsh & Codex)',
+    note: null,
+  },
 }
 
-async function resolveRoots(agents, opts) {
+async function resolveRoots(opts) {
   if (opts.roots) return opts.roots // test hook: [{agent, root}]
 
   if (opts.project) {
     const dir = opts.project === true ? process.cwd() : expandTilde(opts.project)
     if (!(await isDir(dir))) throw new Error(`project directory not found: ${dir}`)
+    let agents = AGENTS.filter((a) => a.projectRoot && (a.tier === 'official' || opts.all))
+    if (opts.agents) {
+      const ids = opts.agents.split(',').map((s) => s.trim()).filter(Boolean)
+      const unknown = ids.filter((id) => !AGENTS.some((a) => a.id === id))
+      if (unknown.length > 0) {
+        throw new Error(
+          `unknown agent id(s): ${unknown.join(', ')} — known ids: ${AGENTS.map((a) => a.id).join(', ')}`
+        )
+      }
+      agents = agents.filter((a) => ids.includes(a.id))
+    }
     const roots = projectRootsFor(agents, dir)
     if (roots.length === 0) {
       throw new Error(
@@ -285,10 +278,8 @@ async function resolveRoots(agents, opts) {
     return roots
   }
 
-  const pairs = await userRootsFor(agents)
-  const seen = new Map()
-  for (const p of pairs) {
-    if (!seen.has(p.root)) seen.set(p.root, p)
-  }
-  return [...seen.values()]
+  // User scope: the shared standard root, nothing else. dsh and Codex read it
+  // natively; other agents' separate roots are intentionally NOT written —
+  // point them at this directory (or add a link) if an agent lacks support.
+  return [{ ...SHARED_ROOT, root: expandTilde(SYNC_PRIMARY) }]
 }

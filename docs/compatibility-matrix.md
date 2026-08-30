@@ -18,12 +18,11 @@ roots with `--all` or an explicit `--agents <id>`).
 
 ## What aipx does with this
 
-- **`aipx install <source>`** writes the payload's skills into the user root
-  of every *detected* official-tier agent (one GitHub download, N agents).
-  Community-tier roots need `--all` or `--agents <id>`.
-- **`aipx sync`** treats `~/.agents/skills/` as the primary (it is already
-  shared by dsh and Codex CLI) and symlinks every skill into the other
-  detected roots — one copy, every agent.
+- **`aipx install <source>`** (user scope) writes one canonical copy into
+  `~/.agents/skills/` — the shared root dsh and Codex read natively.
+  Agents without native support for that root need a link from their own
+  root (e.g. Claude Code: `ln -s ~/.agents/skills/<name> ~/.claude/skills/<name>`),
+  or use `--project` to write team-shared copies into a repo.
 - **`aipx doctor`** shows this matrix for *your* machine: which agents it
   found, via binary or config dir, and whether roots are writable.
 

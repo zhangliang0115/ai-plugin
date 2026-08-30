@@ -105,8 +105,9 @@ dsh plugin --profile web remove my-dsh-plugin
 
 The same skill folder works in Claude Code (`~/.claude/skills/`), dsh and
 Codex (`~/.agents/skills/`), Gemini CLI (`~/.gemini/skills/`), and Copilot
-(`~/.copilot/skills/`). Rather than maintaining N copies, use
-`aipx sync` to link one copy into every root — see the
+(`~/.copilot/skills/`). User-scope `aipx install` writes the canonical copy
+into `~/.agents/skills/` (what dsh and Codex read natively); for the rest,
+link it into their root once — see the
 [compatibility matrix](compatibility-matrix.md).
 
 ## References

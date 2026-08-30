@@ -6,7 +6,6 @@ import { listMcp, syncMcp } from './mcp.js'
 import { newRepo } from './scaffold.js'
 import { remove } from './remove.js'
 import { search } from './search.js'
-import { sync } from './sync.js'
 import { upgrade } from './upgrade.js'
 import { c, fail, info, ok, warn } from './util.js'
 
@@ -18,7 +17,6 @@ ${c.bold('aipx')} — install any AI agent skill/plugin into every agent, once.
 
 ${c.bold('Usage')}
   aipx install <source> [flags]   Install a skill/plugin from GitHub or a local directory
-  aipx sync [flags]               Mirror skills from ~/.agents/skills into every other agent
   aipx upgrade [name] [flags]     Re-install recorded skills from their source (all, or one)
   aipx new <name> [flags]         Scaffold a dual-target skill repo (skills + Claude marketplace + dsh bundle)
   aipx list [--json]              Show installed skills per agent
@@ -27,6 +25,8 @@ ${c.bold('Usage')}
   aipx remove <name>              Uninstall a skill from every agent
   aipx mcp list [--json]          Show MCP servers configured in each agent's config
   aipx mcp sync <name> [flags]    Copy an MCP server definition into other agents' configs
+  aipx mcp import                 Register all discovered MCP servers into the aipx hub
+  aipx mcp serve                  Run the MCP hub over stdio (~4 meta tools, all servers behind it)
   aipx doctor                     Check your environment and detect agents
   aipx --help | --version
 
@@ -45,8 +45,6 @@ ${c.bold('Flags')}
                      so a repo carries its own skills for the whole team
   --all              Include community-tier agents during auto-detection
   --force            Overwrite skills that already exist
-  --copy             sync: duplicate files instead of symlinking
-  --prune            sync: remove dangling links whose primary skill is gone
   --dry-run          Show what would happen without writing
   --github           search: also query GitHub topics live
   --dir <path>       new: parent directory for the scaffold (default: current directory)
@@ -57,7 +55,6 @@ ${c.bold('Flags')}
 ${c.bold('Examples')}
   aipx install zhangliang0115/ai-plugin#path:/skills/skill-author
   aipx install owner/repo --project          # project skills, committed with the repo
-  aipx sync                       # one copy of every skill, visible in every agent
   aipx upgrade                    # re-install everything from its recorded source
   aipx new my-skill               # scaffold a publish-ready dual-target repo
   aipx list
@@ -81,8 +78,6 @@ function parseFlags(argv) {
       flags.json = true
     } else if (a === '--force') {
       flags.force = true
-    } else if (a === '--copy') {
-      flags.copy = true
     } else if (a === '--dry-run') {
       flags.dryRun = true
     } else if (a === '--all') {
@@ -134,10 +129,6 @@ export async function main(argv) {
       case 'install': {
         if (rest.length === 0) throw new Error('usage: aipx install <source> — e.g. aipx install owner/repo')
         await install(rest[0], flags)
-        return
-      }
-      case 'sync': {
-        await sync(flags)
         return
       }
       case 'upgrade': {
@@ -197,8 +188,7 @@ export async function main(argv) {
       }
       case 'mcp': {
         const sub = flags._[1]
-        if (sub === 'list') {
-          const out = await listMcp(flags)
+        if (sub === 'list') {          const out = await listMcp(flags)
           if (flags.json) {
             console.log(JSON.stringify(out, null, 2))
           } else {
@@ -231,7 +221,30 @@ export async function main(argv) {
           await syncMcp(flags._[2], flags)
           return
         }
-        throw new Error('usage: aipx mcp list — or — aipx mcp sync <server-name> [--from <agent>] [--agents <id,id>]')
+        if (sub === 'import') {
+          const { importFromAgents } = await import('./hub/config.js')
+          const { added, total } = await importFromAgents({ all: flags.all })
+          ok(`hub config: ${added} server(s) imported, ${total} registered total`)
+          info('run `aipx mcp serve` and point your agent at: {"command":"aipx","args":["mcp","serve"]}')
+          return
+        }
+        if (sub === 'serve') {
+          const { loadHubConfig } = await import('./hub/config.js')
+          const { createHub } = await import('./hub/index.js')
+          const { serveStdio } = await import('./hub/server.js')
+          const config = await loadHubConfig()
+          const names = Object.keys(config.servers ?? {})
+          if (names.length === 0) {
+            throw new Error(
+              'no MCP servers registered — run `aipx mcp import` first (it pulls every server found in your agent configs)'
+            )
+          }
+          info(`aipx mcp hub: ${names.length} server(s) registered — speaking MCP over stdio`)
+          const hub = createHub({ servers: config.servers, log: (m) => console.error(m) })
+          await serveStdio(hub, { log: (m) => console.error(m) })
+          return
+        }
+        throw new Error('usage: aipx mcp list | aipx mcp sync <name> | aipx mcp import | aipx mcp serve')
       }
       case 'remove': {
         if (rest.length === 0) throw new Error('usage: aipx remove <skill-name>')

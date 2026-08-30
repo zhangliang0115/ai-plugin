@@ -3,6 +3,34 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **MCP hub** (`aipx mcp import` / `aipx mcp serve`) — one MCP server that
+  fronts every registered downstream server with ~4 meta tools (`mcp_search`,
+  `mcp_call`, `mcp_status`, `mcp_refresh`). The model searches for a
+  capability, receives the matched tool's `inputSchema`, then calls it —
+  context cost stays flat no matter how many servers are registered.
+  Downstream stdio servers spawn on demand and respawn after crashes; tool
+  failures surface as `isError` results the model can read and adjust.
+- Skills toolkit grown to six: new `skill-portability-audit` (cross-agent
+  failure modes — tier shadowing, nesting, name mangling, trigger starvation —
+  and a fix-priority audit procedure) and `deepseek-migration`
+  (OpenAI/Anthropic → DeepSeek: endpoint compat, caching prefix sensitivity,
+  reasoner token economics, tool-calling, dsh). `skill-author` /
+  `claude-plugin-dev` repositioned around the cross-agent / dual-target
+  angles.
+- Troubleshooting guide (docs/troubleshooting.md).
+
+### Removed
+
+- **`aipx sync`** and the multi-root install fan-out. `~/.agents/skills` is
+  the shared standard — read natively by DeepSeek Harness (dsh) and Codex
+  CLI — so user-scope installs now write exactly one canonical copy there.
+  (Mirror it to agents lacking support yourself; the compatibility matrix
+  documents each agent's root.)
+
 ## [0.3.0] — 2026-08-30
 
 ### Added

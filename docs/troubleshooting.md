@@ -34,11 +34,6 @@ aipx install owner/repo#path:/skills/their-skill
 The skill is already installed at that root. Re-run with `--force` to
 overwrite, or `aipx upgrade` to refresh from the recorded source.
 
-## Broken links after deleting a skill from the primary root
-
-`aipx sync --prune` removes dangling links whose primary skill is gone. Links
-self-heal if the skill reappears at the same path.
-
 ## GitHub API errors
 
 - `403` / rate limit: set `GITHUB_TOKEN` (any token with public read scope)
@@ -70,10 +65,11 @@ self-heal if the skill reappears at the same path.
 
 ## Windows specifics
 
-- `sync` uses NTFS junctions automatically — no admin rights or Developer
-  Mode needed.
-- Local paths with drive letters (`C:\...\skill`) are recognized.
-- If your antivirus blocks symlink/junction creation, use `aipx sync --copy`.
+- Local paths with drive letters (`C:\...\skill`) are recognized as install
+  sources.
+- User-scope installs write only `~/.agents/skills` — one copy, shared by dsh
+  and Codex. If you mirror skills into other agents' roots yourself, plain
+  `.cmd` wrappers or junctions (no admin rights needed) work well.
 
 ## Still stuck?
 

@@ -21,9 +21,11 @@ Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copil
 `~/.claude/skills`，再复制进 `~/.agents/skills`、`~/.gemini/skills`、
 `~/.copilot/skills`……上游一更新还得重新来一遍。
 
-**`aipx` 就是为解决这个问题而生的。** 一条命令，下载一次，装进机器上检测到的所有
-Agent。一条 `sync`，把技能库链接到所有 Agent。内置的技能还会教你（和你的 Agent）
-如何用一个仓库面向所有 harness 发布插件。
+**`aipx` 就是为解决这个问题而生的。** 一条命令，把技能装进共享标准根
+`~/.agents/skills`（dsh 与 Codex 原生读取）。而 **aipx MCP 网关**用一个只暴露
+约 4 个元工具的 MCP 服务器托管你所有的下游 MCP——模型按需搜索、按需调用，
+上下文占用不再随 MCP 数量膨胀。内置技能还会教你如何用一个仓库面向所有
+harness 发布插件。
 
 ```bash
 npx github:zhangliang0115/ai-plugin install <owner>/<repo>
@@ -59,14 +61,14 @@ aipx install owner/repo --project                # 项目级：.claude/skills、
                                                  # .agents/skills、.github/skills……
                                                  # 随仓库提交，全团队共享
 
-aipx sync            # 把 ~/.agents/skills 链接到其他所有检测到的 Agent 根目录
 aipx upgrade         # 从记录的来源重装已装技能（等价 --force）
 aipx list            # 按 Agent 列出已装技能
 aipx search deepseek # 精选注册表；加 --github 实时搜索 GitHub topics
 aipx lint skills     # 校验 SKILL.md 质量（frontmatter、触发描述、链接、嵌套）
 aipx new my-skill    # 脚手架生成可直接发布的双目标技能仓库
 aipx mcp list        # 盘点各 Agent 配置中的 MCP 服务器
-aipx mcp sync fetch  # 把一个 MCP 服务器定义复制到其他所有 Agent
+aipx mcp import      # 把发现的 MCP 服务器注册进 aipx 网关
+aipx mcp serve       # 运行网关：一个 MCP 服务器、约 4 个元工具、上下文零膨胀
 aipx remove <name>   # 从所有 Agent 卸载
 aipx doctor          # 环境与 Agent 检测报告
 ```
@@ -131,10 +133,11 @@ Node.js ≥ 20 与 `tar`（macOS、Linux、Windows 10+ 均内置）。无需 `np
 
 ## 路线图
 
-- [x] v0.1 — install / sync / list / search / remove / doctor
-- [ ] v0.2 — 项目级安装（`--project`）、`aipx new` 技能脚手架、`aipx upgrade` 更新流
-- [ ] v0.3 — MCP server 配置跨 Agent 同步、npm registry 发布
-- [ ] v0.4 — 质量评分与技能 lint（`aipx lint`）、注册表网站
+- [x] v0.1 — install / list / search / remove / doctor
+- [x] v0.2 — 项目级安装、`aipx new` 脚手架、`aipx upgrade`、`aipx lint`
+- [x] v0.3 — MCP 配置同步、注册表校验 bot + 网站 + 安装冒烟
+- [x] v0.4 — **MCP 网关**（`mcp import` / `mcp serve`）、六技能工具包
+- [ ] next — 网关向量检索（可插拔索引）、npm 发布、注册表合集
 
 详见 [ROADMAP.md](ROADMAP.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 

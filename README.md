@@ -20,12 +20,15 @@ English | [简体中文](README.zh-CN.md)
 Your machine runs 4 different AI agents. Your favorite skill exists as a
 GitHub repo. Now what? Copy folders into `~/.claude/skills`, then
 `~/.agents/skills`, then `~/.gemini/skills`, then `~/.copilot/skills`… and
-re-do it after every upstream update.
+re-do it after every upstream update. And once every agent has twenty MCP
+servers wired up, their tool definitions eat your context window alive.
 
-**`aipx` fixes this.** One command downloads the payload once and installs it
-into every agent it finds on your machine. One `sync` links your skill library
-across all of them. The bundled skills teach you (and your agents) how to
-publish for every harness from a single repo.
+**`aipx` fixes both.** One command installs a skill into the shared standard
+root (`~/.agents/skills` — read natively by dsh and Codex, linkable by the
+rest). And the **aipx MCP hub** fronts ALL your MCP servers with ~4 meta
+tools — search, call, status, import — so the model sees one server instead
+of fifty. The bundled skills teach you (and your agents) how to publish for
+every harness from a single repo.
 
 ```bash
 npx github:zhangliang0115/ai-plugin install <owner>/<repo>
@@ -49,7 +52,7 @@ Plugins fragment even further: Claude Code wants
 `/plugin marketplace add`, dsh wants
 `dsh plugin --profile web add "github:o/r#path:/dsh-plugin"`, Gemini wants
 `gemini extensions`. `aipx` is the missing common denominator: one installer,
-one sync, one list, for all of them.
+one registry, one list, for all of them.
 
 ## Commands
 
@@ -63,14 +66,14 @@ aipx install owner/repo --project                # project-scoped: .claude/skill
                                                  # .agents/skills, .github/skills, …
                                                  # committed with the repo for the team
 
-aipx sync            # link ~/.agents/skills into every other detected agent root
 aipx upgrade         # re-install recorded skills from their source (--force semantics)
 aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
 aipx lint skills     # validate SKILL.md quality (frontmatter, triggers, links, nesting)
 aipx new my-skill    # scaffold a publish-ready dual-target skill repo
 aipx mcp list        # inventory MCP servers across every agent's config
-aipx mcp sync fetch  # copy an MCP server definition into all other agents
+aipx mcp import      # register discovered MCP servers into the aipx hub
+aipx mcp serve       # run the hub: one MCP server, ~4 tools, zero context bloat
 aipx remove <name>   # uninstall everywhere
 aipx doctor          # environment + agent detection report
 ```
@@ -86,6 +89,34 @@ $ aipx install JimmyLv/bibigpt-skill#path:/skills/bibi
     /Users/you/.claude/skills   (Claude Code)
 ✔ installed bibi into 2 root(s)
 ```
+
+## MCP hub — every server, ~4 tools, one context
+
+Every downstream MCP server dumps its full tool catalog into your context.
+With 20 servers × 10 tools that's tens of thousands of tokens of tool
+definitions the model must wade through on every turn.
+
+The aipx hub flips it: one MCP server (the hub) fronts all of them and
+exposes ~4 meta tools. The model **searches** for a capability, gets the
+matching tool's `inputSchema` back, then **calls** it — loading only what it
+uses.
+
+```bash
+aipx mcp import        # pull every MCP server found in your agent configs
+aipx mcp serve         # speak MCP over stdio; wire this into any agent:
+#   { "mcpServers": { "aipx": { "command": "aipx", "args": ["mcp", "serve"] } } }
+```
+
+| Meta tool | Purpose |
+|---|---|
+| `mcp_search` | keyword-search every downstream tool; returns id + description + `inputSchema` |
+| `mcp_call` | execute a downstream tool by `server/tool` id from `mcp_search` |
+| `mcp_status` | registered servers, tool counts, health |
+| `mcp_refresh` | re-scan servers after you add or remove one |
+
+Downstream servers are spawned on demand and reused; remote (HTTP) servers
+and vector search (pluggable index, e.g. a [zvec](https://github.com/alibaba/zvec)
+sidecar) are on the roadmap. Docs: [MCP hub guide](docs/mcp-hub.md).
 
 ## What's bundled (the toolkit)
 
@@ -118,11 +149,12 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
   supply-chain surface.
 - **Non-destructive.** Installs skip existing targets unless `--force`;
   `--dry-run` previews; removal goes through a manifest.
-- **Honest tiers.** Officially documented roots are written by default;
-  community-reported roots (Cursor, OpenCode, OpenClaw) need `--all` or
-  `--agents`.
-- **Standards first.** SKILL.md everywhere; symlinks over copies;
-  `~/.agents/skills` as the sync primary because dsh and Codex already share it.
+- **One canonical root.** `~/.agents/skills` is the shared standard (read
+  natively by dsh and Codex) — install writes one copy there and nothing else.
+  No duplicate trees, no drift.
+- **Context-first MCP.** The hub fronts every downstream MCP server with a
+  handful of meta tools; the model searches and calls on demand instead of
+  loading every tool definition into context.
 
 ## Docs
 
@@ -141,10 +173,11 @@ Optional: `GITHUB_TOKEN` for higher API rate limits.
 
 ## Roadmap
 
-- [x] v0.1 — install / sync / list / search / remove / doctor
-- [ ] v0.2 — project-scope installs (`--project`), `aipx new` skill scaffolder, update flow (`aipx upgrade`)
-- [ ] v0.3 — MCP server config sync across agents, npm registry publish
-- [ ] v0.4 — quality ratings & skill linting (`aipx lint`), registry website
+- [x] v0.1 — install / list / search / remove / doctor
+- [x] v0.2 — project-scope installs, `aipx new` scaffolder, `aipx upgrade`, lint
+- [x] v0.3 — MCP server config sync, registry validation bot + website + install smoke
+- [x] v0.4 — **MCP hub** (`mcp import` / `mcp serve`), skills toolkit (6 skills)
+- [ ] next — vector search for the hub (pluggable index), npm registry publish, registry collections
 
 See [ROADMAP.md](ROADMAP.md) and [CHANGELOG.md](CHANGELOG.md).
 

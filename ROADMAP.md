@@ -32,14 +32,24 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] Registry submissions via PR bot checks — CI validates every entry against the GitHub API (repo exists, schema coherent, no duplicates)
 - [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
 
-## v0.4 — in progress
+## v0.4 — MCP hub (flagship) — in progress
 
-- [x] Registry install smoke: weekly CI run resolves every `aipx install` line against live GitHub (dry-run, isolated config); failures surface as warnings + job summary
-- [ ] Registry website with per-agent install snippets — static generator + Pages pipeline shipped; live URL pending DNS (see issue #2)
+- [x] `aipx mcp import` — register every MCP server found in the known agent configs
+- [x] `aipx mcp serve` — the hub over stdio: 4 meta tools (search / call / status / refresh); downstream stdio servers spawned on demand, respawn on crash; tool failures surfaced as isError results the model can read
+- [x] `sync` removed — `~/.agents/skills` is the shared standard (read natively by dsh & Codex); install writes one canonical copy and nothing else
+- [x] Skills toolkit grown to 6 (added `skill-portability-audit`, `deepseek-migration`; sharpened the other four around cross-agent angles)
+- [ ] pluggable vector search for the hub (zvec sidecar — the keyword scorer ships by default and the interface is the contract)
+- [ ] remote (HTTP/SSE) downstream servers
+
+## Later
+
+- [ ] npm registry publish (`npm i -g aipx`), Homebrew tap
+- [ ] Registry collections — curated best-of entries users can compose a personal stack from (started with `registry/index.json`)
 - [ ] Skill analytics hooks (opt-in)
 
 ## Non-goals
 
 - Running arbitrary code at install time (aipx only copies files; dsh bundle
-  installs run under dsh's own permission model)
+  installs run under dsh's own permission model; the MCP hub spawns only
+  servers the user explicitly registered in its config)
 - Star farms / fake metrics — growth comes from usefulness only
