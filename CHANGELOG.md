@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] — 2026-08-31
 
 ### Added
 
@@ -151,6 +151,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
   publish-dual-target guides; English + Chinese READMEs.
 - CI: `node --test` on Node 20/22/24, syntax lint, dsh-skill drift check.
 
+[0.3.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.3.0
+[0.4.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.4.0
 [0.3.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.1.0
