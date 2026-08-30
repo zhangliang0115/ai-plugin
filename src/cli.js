@@ -28,6 +28,7 @@ ${c.bold('Usage')}
   aipx mcp list [--json]          Show MCP servers configured in each agent's config
   aipx mcp sync <name> [flags]    Copy an MCP server definition into other agents' configs
   aipx mcp add <name> -- cmd…     Register a stdio MCP server into the aipx hub
+  aipx mcp remove <name>          Unregister a server from the aipx hub config
   aipx mcp import                 Register all discovered MCP servers into the aipx hub
   aipx mcp serve                  Run the MCP hub over stdio (~4 meta tools, all servers behind it)
   aipx doctor                     Check your environment and detect agents
@@ -246,6 +247,20 @@ export async function main(argv) {
           await saveHubConfig(config)
           ok(`registered ${c.bold(name)} → ${command} ${flags._.slice(4).join(' ')} ${c.dim(`(${Object.keys(config.servers).length} total)`)}`)
           info('run `aipx mcp serve` and point your agent at: {"command":"aipx","args":["mcp","serve"]}')
+          return
+        }
+        if (sub === 'remove') {
+          const name = flags._[2]
+          if (!name) throw new Error('usage: aipx mcp remove <name>')
+          const { loadHubConfig, saveHubConfig } = await import('./hub/config.js')
+          const config = await loadHubConfig()
+          if (!config.servers?.[name]) {
+            warn(`"${name}" is not registered in the hub config`)
+            return
+          }
+          delete config.servers[name]
+          await saveHubConfig(config)
+          ok(`removed ${c.bold(name)} from the hub config ${c.dim(`(${Object.keys(config.servers).length} remaining)`)}`)
           return
         }
         if (sub === 'import') {
