@@ -1,4 +1,5 @@
 import { LexicalIndex } from './lexical.js'
+import { HttpDownstream } from './http-downstream.js'
 import { StdioDownstream } from './downstream.js'
 
 /**
@@ -18,10 +19,11 @@ export function tokenize(text) {
 }
 
 export function createHub({ servers, log = () => {}, downstreamFactory, searchIndex } = {}) {
-  const makeStdio = (name, def) => new StdioDownstream(name, def, log)
-  const factory = downstreamFactory ?? makeStdio
   const index = searchIndex ?? new LexicalIndex()
   const downstreams = new Map()
+  const makeDefault = (name, def) =>
+    def.url ? new HttpDownstream(name, def, log) : new StdioDownstream(name, def, log)
+  const factory = downstreamFactory ?? makeDefault
   let entriesById = new Map() // toolKey -> { server, name, description, inputSchema }
   let refreshed = false
 

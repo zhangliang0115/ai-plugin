@@ -39,7 +39,7 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] `sync` removed — `~/.agents/skills` is the shared standard (read natively by dsh & Codex); install writes one canonical copy and nothing else
 - [x] Skills toolkit grown to 6 (added `skill-portability-audit`, `deepseek-migration`; sharpened the other four around cross-agent angles)
 - [x] pluggable search index for the hub — `SidecarIndex` speaking the sidecar protocol (build/search over JSON lines) with permanent lexical fallback on missing/crashing/slow sidecars; Python zvec reference sidecar still open
-- [ ] remote (HTTP/SSE) downstream servers
+- [x] remote (streamable HTTP) downstream servers — session capture/replay, JSON + SSE responses
 
 ## Later
 
