@@ -49,6 +49,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
   const factory = downstreamFactory ?? makeStdio
   const downstreams = new Map()
   const toolIndex = new Map() // toolKey -> { server, name, description, inputSchema }
+  let refreshed = false
 
   async function refresh() {
     toolIndex.clear()
@@ -74,10 +75,18 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
         results.push({ name, tools: 0, status: `error: ${e.message}` })
       }
     }
+    refreshed = true
     return results
   }
 
-  function search(query, limit = 8) {
+  // a search/call against a never-refreshed index is a bug callers can't see;
+  // self-heal by refreshing once (e.g. client raced the serve-time refresh)
+  async function ensureRefreshed() {
+    if (!refreshed) await refresh()
+  }
+
+  async function search(query, limit = 8) {
+    await ensureRefreshed()
     const scored = [...toolIndex.entries()]
       .map(([id, t]) => ({ id, ...t, score: scoreTool(query, t.server, t.name, t.description) }))
       .filter((t) => t.score > 0)
@@ -87,9 +96,11 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
   }
 
   async function call(id, args) {
+    await ensureRefreshed()
     const tool = toolIndex.get(id)
     if (!tool) {
-      const hint = search(id, 3).map((t) => t.id).join(', ')
+      const close = await search(id, 3)
+      const hint = close.map((t) => t.id).join(', ')
       throw new Error(
         `unknown tool "${id}" — run mcp_search first${hint ? `; close matches: ${hint}` : ''}`
       )
@@ -112,5 +123,4 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
     for (const d of downstreams.values()) d.stop()
   }
 
-  return { refresh, search, call, status, stop }
-}
+  return { refresh, search, call, status, stop }}

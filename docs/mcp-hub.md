@@ -30,6 +30,32 @@ Hub config lives at `~/.config/aipx/mcp-hub.json` (override with
 `AIPX_CONFIG_DIR`) — a plain `{"servers": {name: {command, args, env}}}` map
 you can edit by hand.
 
+## Verified end-to-end
+
+Real session against the official
+[@modelcontextprotocol/server-filesystem](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem)
+(stdout only; logs on stderr):
+
+```console
+$ aipx mcp import && aipx mcp serve
+hub config: 1 server(s) imported, 1 registered total
+
+→ tools/call mcp_search {"query": "read file", "limit": 2}
+← [
+     { "id": "filesystem/read_file",      "description": "Read the complete contents of a file…" },
+     { "id": "filesystem/read_text_file", "description": "Read the complete contents of a file fro…" }
+   ]                                    + each tool's full inputSchema
+
+→ tools/call mcp_call {"tool": "filesystem/read_file", "arguments": {"path": "…/hello.txt"}}
+← "hello from aipx mcp hub"
+
+→ tools/call mcp_status
+← [{ "name": "filesystem", "ready": true, "tools": 14 }]
+```
+
+Four meta-tool definitions in context — while 14 downstream tools (and any
+number of further servers) stay out of it until searched for.
+
 ## The meta tools
 
 | Tool | Purpose |

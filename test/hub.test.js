@@ -59,12 +59,12 @@ test('hub refresh discovers downstream tools; search finds and returns schema', 
     assert.equal(rows[0].status, 'ok')
     assert.equal(rows[0].tools, 1)
 
-    const results = hub.search('echo text', 5)
+    const results = await hub.search('echo text', 5)
     assert.equal(results.length, 1)
     assert.equal(results[0].id, 'mini/echo')
     assert.equal(results[0].inputSchema.type, 'object')
 
-    assert.deepEqual(hub.search('unrelated gibberish', 5), [])
+    assert.deepEqual(await hub.search('unrelated gibberish', 5), [])
   } finally {
     await hub.stop()
   }

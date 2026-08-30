@@ -152,6 +152,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [Se
 - CI: `node --test` on Node 20/22/24, syntax lint, dsh-skill drift check.
 
 [0.3.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.3.0
+[0.4.1]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.4.1
 [0.4.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.4.0
 [0.3.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/zhangliang0115/ai-plugin/releases/tag/v0.2.0

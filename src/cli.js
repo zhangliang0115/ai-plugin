@@ -239,9 +239,11 @@ export async function main(argv) {
               'no MCP servers registered — run `aipx mcp import` first (it pulls every server found in your agent configs)'
             )
           }
-          info(`aipx mcp hub: ${names.length} server(s) registered — speaking MCP over stdio`)
-          const hub = createHub({ servers: config.servers, log: (m) => console.error(m) })
-          await serveStdio(hub, { log: (m) => console.error(m) })
+          // MCP stdio: stdout carries ONLY JSON-RPC — every log goes to stderr
+          const logErr = (m) => console.error(m)
+          logErr(`aipx mcp hub: ${names.length} server(s) registered`)
+          const hub = createHub({ servers: config.servers, log: logErr })
+          await serveStdio(hub, { log: logErr })
           return
         }
         throw new Error('usage: aipx mcp list | aipx mcp sync <name> | aipx mcp import | aipx mcp serve')

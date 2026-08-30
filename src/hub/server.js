@@ -79,7 +79,7 @@ export function createMessageHandler(hub, log = () => {}) {
         try {
           let result
           if (name === 'mcp_search') {
-            const results = hub.search(args.query ?? '', args.limit ?? 8)
+            const results = await hub.search(args.query ?? '', args.limit ?? 8)
             result = { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] }
           } else if (name === 'mcp_call') {
             if (!args.tool) throw new Error('missing required argument: tool')
@@ -109,14 +109,19 @@ export function createMessageHandler(hub, log = () => {}) {
 }
 
 /**
- * Serve the hub over stdio (newline-delimited JSON-RPC). Resolves when stdin
- * closes; stops all downstreams first.
+ * Serve the hub over stdio (newline-delimited JSON-RPC). The initial index
+ * refresh completes before input is attached — early client requests wait in
+ * the pipe instead of racing an empty index. Resolves when stdin closes;
+ * stops all downstreams first.
  */
 export async function serveStdio(hub, { input = process.stdin, output = process.stdout, log = () => {} } = {}) {
   const handle = createMessageHandler(hub, log)
   const { createInterface } = await import('node:readline')
-  const rl = createInterface({ input })
 
+  // refresh first: requests sent by the client sit in the pipe until we attach
+  await hub.refresh().catch((e) => log(`initial refresh failed: ${e.message}`))
+
+  const rl = createInterface({ input })
   const write = (obj) => {
     output.write(JSON.stringify(obj) + '\n')
   }
@@ -152,8 +157,6 @@ export async function serveStdio(hub, { input = process.stdin, output = process.
       })
   })
 
-  // initial refresh so the first search has data even before mcp_refresh
-  await hub.refresh().catch((e) => log(`initial refresh failed: ${e.message}`))
   return done
 }
 

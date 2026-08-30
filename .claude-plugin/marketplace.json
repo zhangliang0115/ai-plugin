@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "The AI Plugin eXchange: cross-agent skills for skill authoring, dsh plugin development, Claude Code plugin development, and DeepSeek model cost routing",
-    "version": "0.4.0"
+    "version": "0.4.1"
   },
   "plugins": [
     {
       "name": "ai-plugin-toolkit",
       "source": "./",
       "description": "Cross-agent skills: write SKILL.md skills, build DeepSeek Harness (dsh) plugins, publish Claude Code plugins/marketplaces, and route work to the right DeepSeek model to cut cost. Install once with aipx to serve Claude Code, dsh, Codex, Gemini CLI, Copilot and Cursor.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "category": "productivity",
       "keywords": [
         "agent-skills",
