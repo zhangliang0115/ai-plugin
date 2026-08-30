@@ -3,6 +3,20 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.4.1] — 2026-08-31
+
+### Fixed
+
+- MCP hub: the serve-time index refresh raced early client requests —
+  `mcp_search`/`mcp_call` could hit an empty index. Input handling now starts
+  only after the initial refresh, and search/call self-heal with a lazy
+  refresh if needed.
+- MCP hub: the startup banner went to stdout, violating the stdio transport
+  (stdout carries only JSON-RPC). All serve logs now go to stderr.
+- Verified end-to-end against `@modelcontextprotocol/server-filesystem`
+  (search ranking, real file read via `mcp_call`, 14 tools discovered);
+  real transcript added to docs/mcp-hub.md.
+
 ## [0.4.0] — 2026-08-31
 
 ### Added

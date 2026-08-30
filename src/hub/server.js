@@ -1,6 +1,6 @@
 import { createHub } from './index.js'
 
-export const HUB_SERVER_INFO = { name: 'aipx-mcp-hub', version: '0.3.0' }
+export const HUB_SERVER_INFO = { name: 'aipx-mcp-hub', version: '0.4.1' }
 export const PROTOCOL_VERSION = '2024-11-05'
 
 /**
