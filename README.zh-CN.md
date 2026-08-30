@@ -2,7 +2,7 @@
 
 # ai-plugin
 
-**一条命令，把任意 AI Agent 技能/插件装进所有 Agent。**
+**一条命令，把任意 AI Agent 技能/插件装进主流 harness 共享的标准根。**
 
 Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copilot · Cursor · OpenClaw
 
@@ -23,7 +23,7 @@ Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copil
 
 **`aipx` 就是为解决这个问题而生的。** 一条命令，把技能装进共享标准根
 `~/.agents/skills`（dsh 与 Codex 原生读取）。而 **aipx MCP 网关**用一个只暴露
-约 4 个元工具的 MCP 服务器托管你所有的下游 MCP——模型按需搜索、按需调用，
+4 个元工具（search / call / status / refresh）的 MCP 服务器托管你所有的下游 MCP——模型按需搜索、按需调用，
 上下文占用不再随 MCP 数量膨胀。内置技能还会教你如何用一个仓库面向所有
 harness 发布插件。
 
@@ -137,7 +137,8 @@ Node.js ≥ 20 与 `tar`（macOS、Linux、Windows 10+ 均内置）。无需 `np
 - [x] v0.2 — 项目级安装、`aipx new` 脚手架、`aipx upgrade`、`aipx lint`
 - [x] v0.3 — MCP 配置同步、注册表校验 bot + 网站 + 安装冒烟
 - [x] v0.4 — **MCP 网关**（`mcp import` / `mcp serve`）、六技能工具包
-- [ ] next — 网关向量检索（可插拔索引）、npm 发布、注册表合集
+- [x] next — 网关向量检索契约 + 可插拔 SidecarIndex、registry collections（`aipx collection`）
+- [ ] then — zvec sidecar 接线（Python）、npm 发布、registry 扩充
 
 详见 [ROADMAP.md](ROADMAP.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 

@@ -2,7 +2,7 @@
 
 # ai-plugin
 
-**One command to install any AI agent skill/plugin into every agent.**
+**One command to install any AI agent skill/plugin into the shared standard root every major harness reads.**
 
 Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copilot · Cursor · OpenClaw
 
@@ -25,8 +25,8 @@ servers wired up, their tool definitions eat your context window alive.
 
 **`aipx` fixes both.** One command installs a skill into the shared standard
 root (`~/.agents/skills` — read natively by dsh and Codex, linkable by the
-rest). And the **aipx MCP hub** fronts ALL your MCP servers with ~4 meta
-tools — search, call, status, import — so the model sees one server instead
+rest). And the **aipx MCP hub** fronts ALL your MCP servers with 4 meta
+tools — search, call, status, refresh — so the model sees one server instead
 of fifty. The bundled skills teach you (and your agents) how to publish for
 every harness from a single repo.
 
@@ -71,11 +71,14 @@ aipx list            # what's installed, per agent
 aipx search deepseek # curated registry; add --github for live GitHub topics
 aipx lint skills     # validate SKILL.md quality (frontmatter, triggers, links, nesting)
 aipx new my-skill    # scaffold a publish-ready dual-target skill repo
+aipx collection                    # browse curated capability bundles
+aipx collection deepseek-coding --run   # install a whole stack in one go
 aipx mcp list        # inventory MCP servers across every agent's config
 aipx mcp import      # register discovered MCP servers into the aipx hub
-aipx mcp serve       # run the hub: one MCP server, ~4 tools, zero context bloat
+aipx mcp add fs -- npx -y @modelcontextprotocol/server-filesystem /tmp   # register one more
+aipx mcp serve       # run the hub: one MCP server, 4 meta tools, zero context bloat
 aipx remove <name>   # uninstall everywhere
-aipx doctor          # environment + agent detection report
+aipx doctor          # environment + agent detection + version check
 ```
 
 Example:
@@ -85,9 +88,8 @@ $ aipx install JimmyLv/bibigpt-skill#path:/skills/bibi
 ✔ detected skill with 1 skill(s):
     bibi — Summarize YouTube, Bilibili videos and podcasts…
 ✔ target roots:
-    /Users/you/.agents/skills   (DeepSeek Harness (dsh))
-    /Users/you/.claude/skills   (Claude Code)
-✔ installed bibi into 2 root(s)
+    ~/.agents/skills (Shared skills root — read natively by dsh & Codex)
+✔ installed bibi into shared root ~/.agents/skills
 ```
 
 ## MCP hub — every server, ~4 tools, one context
@@ -103,6 +105,7 @@ uses.
 
 ```bash
 aipx mcp import        # pull every MCP server found in your agent configs
+aipx mcp add fs -- npx -y @modelcontextprotocol/server-filesystem /tmp   # register one more
 aipx mcp serve         # speak MCP over stdio; wire this into any agent:
 #   { "mcpServers": { "aipx": { "command": "aipx", "args": ["mcp", "serve"] } } }
 ```
@@ -114,9 +117,12 @@ aipx mcp serve         # speak MCP over stdio; wire this into any agent:
 | `mcp_status` | registered servers, tool counts, health |
 | `mcp_refresh` | re-scan servers after you add or remove one |
 
-Downstream servers are spawned on demand and reused; remote (HTTP) servers
-and vector search (pluggable index, e.g. a [zvec](https://github.com/alibaba/zvec)
-sidecar) are on the roadmap. Docs: [MCP hub guide](docs/mcp-hub.md) · [vector search design](docs/mcp-hub-vector-search.md).
+Downstream servers are spawned on demand and reused. Both transports are
+supported — local stdio and remote streamable-HTTP servers — and search runs
+through a pluggable index: a dependency-free lexical scorer by default, with
+a vector sidecar (e.g. a [zvec](https://github.com/alibaba/zvec) build) as an
+optional enhancer. Docs: [MCP hub guide](docs/mcp-hub.md) · [vector search
+design](docs/mcp-hub-vector-search.md).
 
 ## What's bundled (the toolkit)
 
@@ -176,8 +182,9 @@ Optional: `GITHUB_TOKEN` for higher API rate limits.
 - [x] v0.1 — install / list / search / remove / doctor
 - [x] v0.2 — project-scope installs, `aipx new` scaffolder, `aipx upgrade`, lint
 - [x] v0.3 — MCP server config sync, registry validation bot + website + install smoke
-- [x] v0.4 — **MCP hub** (`mcp import` / `mcp serve`), skills toolkit (6 skills)
-- [ ] next — vector search for the hub (pluggable index), npm registry publish, registry collections
+- [x] v0.4 — **MCP hub** (`mcp import` / `mcp add` / `mcp serve`), skills toolkit (6 skills)
+- [x] next — vector search contract + pluggable sidecar index, registry collections (`aipx collection`)
+- [ ] then — zvec sidecar wiring (Python), npm registry publish, registry expansion
 
 See [ROADMAP.md](ROADMAP.md) and [CHANGELOG.md](CHANGELOG.md).
 
