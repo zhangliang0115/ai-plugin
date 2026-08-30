@@ -88,6 +88,42 @@
         "deepseek"
       ],
       "install": "see repo README"
+    },
+    {
+      "name": "mcp-reference-servers",
+      "repo": "modelcontextprotocol/servers",
+      "kind": "harness",
+      "description": "Official Model Context Protocol reference servers — filesystem, git, memory, fetch and more; ideal downstream servers for the aipx hub",
+      "topics": [
+        "mcp",
+        "model-context-protocol",
+        "servers"
+      ],
+      "install": "see repo README (stdio servers - import with: aipx mcp import)"
+    },
+    {
+      "name": "awesome-mcp-servers",
+      "repo": "punkpeye/awesome-mcp-servers",
+      "kind": "awesome",
+      "description": "The largest curated list of MCP servers - browse it, then manage your picks through the aipx hub",
+      "topics": [
+        "awesome",
+        "mcp",
+        "servers"
+      ],
+      "install": "browse and aipx mcp import"
+    },
+    {
+      "name": "playwright-mcp",
+      "repo": "microsoft/playwright-mcp",
+      "kind": "app",
+      "description": "Official Playwright MCP server - browser automation and accessibility tree access for agents",
+      "topics": [
+        "mcp",
+        "browser",
+        "playwright"
+      ],
+      "install": "see repo README (npx @playwright/mcp - add to hub config: command npx, args @playwright/mcp)"
     }
   ],
   "collections": [
