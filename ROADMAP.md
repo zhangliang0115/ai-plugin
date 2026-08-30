@@ -38,7 +38,7 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] `aipx mcp serve` — the hub over stdio: 4 meta tools (search / call / status / refresh); downstream stdio servers spawned on demand, respawn on crash; tool failures surfaced as isError results the model can read
 - [x] `sync` removed — `~/.agents/skills` is the shared standard (read natively by dsh & Codex); install writes one canonical copy and nothing else
 - [x] Skills toolkit grown to 6 (added `skill-portability-audit`, `deepseek-migration`; sharpened the other four around cross-agent angles)
-- [ ] pluggable vector search for the hub (zvec sidecar — the keyword scorer ships by default and the interface is the contract)
+- [x] pluggable search index for the hub — `SidecarIndex` speaking the sidecar protocol (build/search over JSON lines) with permanent lexical fallback on missing/crashing/slow sidecars; Python zvec reference sidecar still open
 - [ ] remote (HTTP/SSE) downstream servers
 
 ## Later

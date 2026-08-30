@@ -1,3 +1,4 @@
+import { LexicalIndex } from './lexical.js'
 import { StdioDownstream } from './downstream.js'
 
 /**
@@ -16,43 +17,16 @@ export function tokenize(text) {
     .filter((t) => t.length > 0)
 }
 
-/**
- * Lexical score for one downstream tool against a query. Deterministic and
- * dependency-free on purpose — the interface (query in, ranked tools out) is
- * what matters; a vector index (e.g. a zvec sidecar) can replace this
- * function without touching anything else.
- */
-export function scoreTool(query, serverName, toolName, description) {
-  const qTokens = tokenize(query)
-  if (qTokens.length === 0) return 0
-  const nameLower = `${serverName} ${toolName}`.toLowerCase()
-  const descLower = String(description ?? '').toLowerCase()
-
-  let score = 0
-  for (const token of qTokens) {
-    if (toolName.toLowerCase().includes(token)) score += 4
-    if (serverName.toLowerCase().includes(token)) score += 2
-    if (descLower.includes(token)) score += 1
-    for (const nt of tokenize(toolName)) {
-      if (nt.startsWith(token)) {
-        score += 2
-        break
-      }
-    }
-    if (!nameLower.includes(token) && !descLower.includes(token)) score -= 1
-  }
-  return score
-}
-
-export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
+export function createHub({ servers, log = () => {}, downstreamFactory, searchIndex } = {}) {
   const makeStdio = (name, def) => new StdioDownstream(name, def, log)
   const factory = downstreamFactory ?? makeStdio
+  const index = searchIndex ?? new LexicalIndex()
   const downstreams = new Map()
-  let toolIndex = new Map() // toolKey -> { server, name, description, inputSchema }
+  let entriesById = new Map() // toolKey -> { server, name, description, inputSchema }
   let refreshed = false
 
   async function refresh() {
-    // build a fresh index, then swap — concurrent searches never see a
+    // build a fresh entry map, then swap — concurrent searches never see a
     // half-cleared catalog
     const next = new Map()
     const results = []
@@ -77,7 +51,13 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
         results.push({ name, tools: 0, status: `error: ${e.message}` })
       }
     }
-    toolIndex = next
+    entriesById = next
+    await index.build(
+      [...entriesById.entries()].map(([id, t]) => ({
+        id,
+        text: `${t.server} ${t.name} ${t.description}`,
+      }))
+    )
     refreshed = true
     return results
   }
@@ -90,17 +70,15 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
 
   async function search(query, limit = 8) {
     await ensureRefreshed()
-    const scored = [...toolIndex.entries()]
-      .map(([id, t]) => ({ id, ...t, score: scoreTool(query, t.server, t.name, t.description) }))
-      .filter((t) => t.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-    return scored.map(({ score, ...rest }) => rest)
+    const ranked = await index.search(query, limit)
+    return ranked
+      .map(({ id }) => ({ id, ...(entriesById.get(id) ?? {}) }))
+      .filter((t) => t.server !== undefined)
   }
 
   async function call(id, args) {
     await ensureRefreshed()
-    const tool = toolIndex.get(id)
+    const tool = entriesById.get(id)
     if (!tool) {
       const close = await search(id, 3)
       const hint = close.map((t) => t.id).join(', ')
@@ -118,7 +96,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
       name,
       ready: d.ready,
       lastError: d.lastError,
-      tools: [...toolIndex.entries()].filter(([id]) => id.startsWith(`${name}/`)).length,
+      tools: [...entriesById.keys()].filter((id) => id.startsWith(`${name}/`)).length,
     }))
   }
 
@@ -126,4 +104,5 @@ export function createHub({ servers, log = () => {}, downstreamFactory } = {}) {
     for (const d of downstreams.values()) d.stop()
   }
 
-  return { refresh, search, call, status, stop }}
+  return { refresh, search, call, status, stop }
+}

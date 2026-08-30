@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { scoreTool, createHub } from '../src/hub/index.js'
+import { createHub } from '../src/hub/index.js'
+import { LexicalIndex } from '../src/hub/lexical.js'
 import { StdioDownstream } from '../src/hub/downstream.js'
 import { createMessageHandler, META_TOOLS } from '../src/hub/server.js'
 
@@ -13,35 +14,24 @@ const FIXTURE = path.join(
   'mini-mcp.mjs'
 )
 
-// ---- search scoring ----
+// ---- search scoring (shipped lexical index) ----
 
-const FAKE_TOOLS = [
-  { server: 'redis', name: 'get', description: 'Get a key from Redis' },
-  { server: 'browser', name: 'screenshot', description: 'Take a screenshot of a webpage' },
-  { server: 'db', name: 'list_tables', description: 'List database tables' },
-]
+test('LexicalIndex ranks matching entries and drops unrelated', async () => {
+  const idx = new LexicalIndex()
+  await idx.build([
+    { id: 'redis/get', text: 'redis get Get a key from Redis' },
+    { id: 'browser/screenshot', text: 'browser screenshot Take a screenshot of a webpage' },
+    { id: 'db/list_tables', text: 'db list_tables List database tables' },
+  ])
+  const redis = await idx.search('redis', 5)
+  assert.equal(redis[0].id, 'redis/get')
 
-test('scoreTool: query "redis" ranks the redis tool top', () => {
-  const scored = FAKE_TOOLS.map((t) => ({
-    name: t.name,
-    score: scoreTool('redis', t.server, t.name, t.description),
-  })).sort((a, b) => b.score - a.score)
-  assert.equal(scored[0].name, 'get')
+  const shot = await idx.search('screenshot webpage', 5)
+  assert.equal(shot[0].id, 'browser/screenshot')
+
+  assert.deepEqual(await idx.search('cooking recipe', 5), [])
 })
 
-test('scoreTool: query "screenshot webpage" ranks browser tool top', () => {
-  const scored = FAKE_TOOLS.map((t) => ({
-    name: t.name,
-    score: scoreTool('screenshot webpage', t.server, t.name, t.description),
-  })).sort((a, b) => b.score - a.score)
-  assert.equal(scored[0].name, 'screenshot')
-})
-
-test('scoreTool: unrelated query scores <= 0 for every tool', () => {
-  for (const t of FAKE_TOOLS) {
-    assert.ok(scoreTool('cooking recipe', t.server, t.name, t.description) <= 0)
-  }
-})
 
 // ---- hub end-to-end against a real child fixture ----
 
