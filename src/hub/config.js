@@ -20,7 +20,7 @@ export async function loadHubConfig() {
 
 export async function saveHubConfig(config) {
   const p = hubConfigPath()
-  await ensureDir(p)
+  await ensureDir(path.dirname(p))
   await writeJson(p, config)
 }
 

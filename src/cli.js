@@ -27,6 +27,7 @@ ${c.bold('Usage')}
   aipx remove <name>              Uninstall a skill from every agent
   aipx mcp list [--json]          Show MCP servers configured in each agent's config
   aipx mcp sync <name> [flags]    Copy an MCP server definition into other agents' configs
+  aipx mcp add <name> -- cmd…     Register a stdio MCP server into the aipx hub
   aipx mcp import                 Register all discovered MCP servers into the aipx hub
   aipx mcp serve                  Run the MCP hub over stdio (~4 meta tools, all servers behind it)
   aipx doctor                     Check your environment and detect agents
@@ -70,6 +71,11 @@ function parseFlags(argv) {
   const valued = new Set(['--agents', '--dir', '--owner', '--from'])
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
+    if (a === '--') {
+      // terminator: everything after it is positional (mcp add <name> -- cmd args)
+      flags._.push(...argv.slice(i + 1))
+      break
+    }
     if (a === '--no-color') {
       flags.noColor = true
     } else if (a === '--help' || a === '-h') {
@@ -223,6 +229,23 @@ export async function main(argv) {
         }
         if (sub === 'sync') {
           await syncMcp(flags._[2], flags)
+          return
+        }
+        if (sub === 'add') {
+          const name = flags._[2]
+          const command = flags._[3]
+          if (!name || !command) {
+            throw new Error('usage: aipx mcp add <name> -- <command> [args…] — e.g. aipx mcp add fs -- npx -y @modelcontextprotocol/server-filesystem /tmp')
+          }
+          const { loadHubConfig, saveHubConfig } = await import('./hub/config.js')
+          const config = await loadHubConfig()
+          if (config.servers[name] && !flags.force) {
+            throw new Error(`server "${name}" is already registered — use --force to overwrite`)
+          }
+          config.servers[name] = { command, args: flags._.slice(4), ...(flags.env ? { env: flags.env } : {}) }
+          await saveHubConfig(config)
+          ok(`registered ${c.bold(name)} → ${command} ${flags._.slice(4).join(' ')} ${c.dim(`(${Object.keys(config.servers).length} total)`)}`)
+          info('run `aipx mcp serve` and point your agent at: {"command":"aipx","args":["mcp","serve"]}')
           return
         }
         if (sub === 'import') {
