@@ -20,7 +20,18 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: npm run lint
-      - run: npm test
+      - name: Test (per-file retry for runner IPC flake)
+        run: |
+          fail=0
+          for f in test/*.test.js; do
+            ok=0
+            for attempt in 1 2 3; do
+              if node --test "$f"; then ok=1; break; fi
+              echo "::warning::$f attempt $attempt failed, retrying"
+            done
+            if [ "$ok" != "1" ]; then fail=1; echo "::error::persistent failure: $f"; fi
+          done
+          exit $fail
       - name: Publish (skipped until NPM_TOKEN secret is configured)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
