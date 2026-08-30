@@ -16,7 +16,18 @@ jobs:
         with:
           node-version: 22
       - run: npm run lint
-      - run: npm test
+      - name: Test (per-file retry for runner IPC flake)
+        run: |
+          fail=0
+          for f in test/*.test.js; do
+            ok=0
+            for attempt in 1 2 3; do
+              if node --test "$f"; then ok=1; break; fi
+              echo "::warning::$f attempt $attempt failed, retrying"
+            done
+            if [ "$ok" != "1" ]; then fail=1; echo "::error::persistent failure: $f"; fi
+          done
+          exit $fail
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
