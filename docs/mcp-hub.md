@@ -80,6 +80,26 @@ serving — the hub degrades per-server, not globally.
 | `mcp_status` | registered servers, tool counts, health |
 | `mcp_refresh` | re-scan servers after adding/removing/restarting one |
 
+## The hub console
+
+In DeepSeek Harness the bundle adds a **Hub Console** tab under Settings →
+Plugins. It shows the server pool with live health, add/remove servers,
+per-tool enable/disable (a disabled tool leaves the model-visible catalog
+without unregistering the server), the full tool catalog with filtering, a
+search engine selector, and a search playground that runs the real
+`mcp_search` — so you can see precisely which tools a query would surface
+before trusting it in production. The current serving engine
+(`lexical`, `zvec`, `zvec-hybrid-local`, …) is reported alongside.
+
+## The meta tools
+
+| Tool | Purpose |
+|---|---|
+| `mcp_search` | keyword-search all downstream tools; returns id, description and the exact `inputSchema` |
+| `mcp_call` | execute a downstream tool by its `"<server>/<tool>"` id from `mcp_search` |
+| `mcp_status` | registered servers, tool counts, health, and the active search engine |
+| `mcp_refresh` | re-scan servers after adding/removing/restarting one |
+
 The descriptions of these four tools are the model's entire manual — they
 teach the search-then-call loop explicitly, because that's the part that
 makes or breaks a gateway.
