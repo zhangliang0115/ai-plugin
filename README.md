@@ -119,10 +119,23 @@ aipx mcp serve         # speak MCP over stdio; wire this into any agent:
 
 Downstream servers are spawned on demand and reused. Both transports are
 supported — local stdio and remote streamable-HTTP servers — and search runs
-through a pluggable index: a dependency-free lexical scorer by default, with
-a vector sidecar (e.g. a [zvec](https://github.com/alibaba/zvec) build) as an
-optional enhancer. Docs: [MCP hub guide](docs/mcp-hub.md) · [vector search
-design](docs/mcp-hub-vector-search.md).
+through a pluggable index with four engines, picked automatically: a
+zero-dep lexical scorer; zvec full-text (BM25-style, Chinese-aware); a
+**zero-config hybrid** that fuses full-text with a free local embedding
+model (~220 MB, auto-installed and auto-downloaded on first build — no API
+key); and a remote-embeddings hybrid for teams that already run one. On the
+bundled 20-query eval, hybrid ranks 14/20 top-1 vs 8/20 lexical — Chinese
+phrasings go 0/10 → 9/10. Docs: [MCP hub guide](docs/mcp-hub.md) · [search
+engines + eval](docs/mcp-hub-vector-search.md).
+
+### Hub console — manage the hub from dsh's settings
+
+In DeepSeek Harness, the bundle adds a **Hub Console** tab under Settings →
+Plugins: the server pool with live health, add/remove servers, per-tool
+enable/disable (disabled tools leave the model-visible catalog), the tool
+catalog with filtering, and a search playground that shows exactly what
+`mcp_search` would hand the model — type 中文, see which tools surface.
+Tui profiles skip the console; skills work everywhere.
 
 ## What's bundled (the toolkit)
 

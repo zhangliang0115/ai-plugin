@@ -3,6 +3,46 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.5.0] — 2026-09-05
+
+### Added
+
+- **Hub console (dsh plugin)** — a "Hub Console" tab in dsh's Settings →
+  Plugins: server pool with live health, add/remove servers, per-tool
+  enable/disable (disabled tools leave the model-visible catalog), the full
+  tool catalog with filtering, and a search playground that exercises the
+  real `mcp_search` from the model's perspective. Backed by same-origin
+  routes bridging to a lazily-spawned `aipx mcp serve` child; tui profiles
+  skip the console and keep plain skills.
+- **Search engines with a zero-config local hybrid** — the hub's search
+  index auto-upgrades to zvec full-text (jieba-aware) or zvec hybrid when
+  available. The local hybrid embeds with
+  paraphrase-multilingual-MiniLM-L12-v2 (~220 MB ONNX via fastembed;
+  auto-installed, auto-downloaded via hf-mirror, no API key) and RRF-fuses
+  with full-text. `AIPX_EMBEDDING_*` selects a remote embeddings endpoint
+  instead; `AIPX_LOCAL_EMBEDDINGS=0` stays pure full-text.
+  Eval (`scripts/eval-search.mjs --compare`, 20 queries × 3 engines):
+  lexical 8/20, full-text 7/20, hybrid-local 14/20 top-1 — Chinese
+  phrasings 0/10 → 9/10.
+- `aipx mcp serve --sidecar "<cmd> [args…]"` (or `mcp-hub.json`
+  `search.sidecar`) wires a search sidecar; any failure falls back to
+  lexical, never interrupting service.
+- `disabledTools` in mcp-hub.json (editable from the console) removes tools
+  from the model-visible catalog without unregistering the server.
+- dsh bundle registers `deepseek-migration` and `skill-portability-audit`
+  (they shipped in 0.4.2 but were never registered — regression test added);
+  bundled quick-action-style skills can now declare invocation policy.
+
+### Fixed
+
+- dsh hybrid search wire shapes between console halves (status map, tools/
+  results envelopes) and a runtime ReferenceError in status normalization.
+- Docs: install-into-dsh documents a local-clone path for SSH-blocked
+  networks; new docs record dsh-native quick-action mechanisms we
+  deliberately don't rebuild (docs/dsh-quick-actions.md) and the MCP
+  ecosystem reference list (docs/mcp-ecosystem.md).
+
+
 ## [0.4.2] — 2026-08-31
 
 ### Fixed
