@@ -38,8 +38,16 @@ All five v0.2 items shipped. Next up: v0.3 (MCP config sync, npm publish, regist
 - [x] `aipx mcp serve` — the hub over stdio: 4 meta tools (search / call / status / refresh); downstream stdio servers spawned on demand, respawn on crash; tool failures surfaced as isError results the model can read
 - [x] `sync` removed — `~/.agents/skills` is the shared standard (read natively by dsh & Codex); install writes one canonical copy and nothing else
 - [x] Skills toolkit grown to 6 (added `skill-portability-audit`, `deepseek-migration`; sharpened the other four around cross-agent angles)
-- [x] pluggable search index for the hub — `SidecarIndex` speaking the sidecar protocol (build/search over JSON lines) with permanent lexical fallback on missing/crashing/slow sidecars; Python zvec reference sidecar still open
+- [x] pluggable search index for the hub — `SidecarIndex` speaking the sidecar protocol (build/search over JSON lines) with permanent lexical fallback on missing/crashing/slow sidecars
 - [x] remote (streamable HTTP) downstream servers — session capture/replay, JSON + SSE responses
+
+## v0.5 — hub console + search engines — shipped 2026-09-05 (v0.5.0–v0.5.2)
+
+- [x] Hub console (dsh settings → Plugins → Hub Console): server pool with live health, add/remove (stdio + streamable-HTTP), per-tool enable/disable, tool catalog with filtering, and a search playground exercising the real `mcp_search`
+- [x] Search engines, auto-selected: lexical → zvec full-text (jieba-aware) → zero-config local hybrid (fastembed MiniLM-L12 auto-download, hf-mirror default) → remote-embeddings hybrid; `aipx mcp serve --sidecar` + `mcp-hub.json` `search.sidecar`
+- [x] Prompt-cache stabilization: id-sorted catalog, no-op refresh skip, deterministic tie-breaks in every engine
+- [x] `aipx doctor` hub section; 20-query eval harness (lexical 8/20 → hybrid 14/20 top-1)
+- [x] Registry: +12 verified entries (dsh ecosystem, first-party MCP servers, dsh-plugin topic) → 22 total; Pages site renders collections
 
 ## Later
 
