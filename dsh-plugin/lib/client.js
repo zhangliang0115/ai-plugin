@@ -259,6 +259,7 @@ window.__ModuleLoader__.load({
 		*/
 		function AddServerForm(props) {
 			const [name, setName] = (0, react.useState)("");
+			const [overwriteOk, setOverwriteOk] = (0, react.useState)(false);
 			const [transport, setTransport] = (0, react.useState)("command");
 			const [command, setCommand] = (0, react.useState)("");
 			const [args, setArgs] = (0, react.useState)("");
@@ -290,6 +291,13 @@ window.__ModuleLoader__.load({
 					setError("Name 不能包含空格，用 - 或 _ 连接，例如 my-server。");
 					return;
 				}
+				const isDuplicate = (props.existingNames ?? []).includes(trimmedName);
+				if (isDuplicate && !overwriteOk) {
+					setOverwriteOk(true);
+					setError(`「${trimmedName}」已存在——再次提交将覆盖它的定义。`);
+					return;
+				}
+				setOverwriteOk(false);
 				const byUrl = transport === "url";
 				if (byUrl && !/^https?:\/\//.test(url.trim())) {
 					setError("URL 必填且以 http:// 或 https:// 开头（streamable-HTTP 传输）。");
@@ -352,7 +360,7 @@ window.__ModuleLoader__.load({
 									value: name,
 									placeholder: "my-server",
 									disabled: busy,
-									onChange: (event) => { setName(event.target.value); }
+onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 								})
 							),
 							transport === "command" ? (0, h)("label", { className: "apxdsh-field" },
@@ -504,6 +512,7 @@ window.__ModuleLoader__.load({
 						)
 					),
 				(0, h)(AddServerForm, {
+					existingNames: rows.map((row) => row.name),
 					onAdded: (name) => {
 						setNotice(`已添加 ${name}。`);
 						void onRefresh();
