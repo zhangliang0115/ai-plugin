@@ -73,6 +73,14 @@ aipx remove <name>   # 从所有 Agent 卸载
 aipx doctor          # 环境与 Agent 检测报告
 ```
 
+MCP 网关检索有四档引擎，自动选择：内置词法（零依赖）→ zvec 全文（中文友好）→
+**零配置本地混合**（fastembed 小模型自动下载、无 API 无费用；20 条查询评测
+top-1 从 8/20 提升至 14/20，中文 0/10 → 9/10）→ 远程 embedding 混合（可选）。
+`aipx mcp serve --sidecar "python3 …/sidecars/zvec_sidecar.py"` 即接入。
+
+dsh 用户还可以在 **设置 → Plugins → Hub Console** 面板里管理服务器池、启停
+单个工具、浏览工具目录，并用搜索试验场预览模型视角的检索结果。
+
 示例：
 
 ```console
@@ -124,6 +132,10 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 - [安装到 DeepSeek Harness (dsh)](docs/install-into-dsh.md) — 调研指南：技能根、分层、bundle 格式、常见的坑
 - [安装到 Claude Code](docs/install-into-claude-code.md) — 市场与插件
 - [一次发布，全端生效](docs/publish-dual-target.md) — 双目标仓库布局
+- [MCP 网关指南](docs/mcp-hub.md) — 元工具、事务记录、控制台
+- [检索引擎与评测](docs/mcp-hub-vector-search.md) — 词法/全文/混合四引擎与 20 查询评测
+- [dsh 快捷指令](docs/dsh-quick-actions.md) — dsh 原生自定义提示词机制与边界
+- [MCP 生态决策](docs/mcp-ecosystem.md) — 哪些用现成、哪些自研
 
 ## 环境要求
 
