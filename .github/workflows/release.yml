@@ -31,7 +31,7 @@ jobs:
       - name: Extract release notes from CHANGELOG
         run: |
           version="${GITHUB_REF_NAME#v}"
-          awk -v ver="$version" '$0 ~ "^## \\[" ver "\\]" { flag=1; next } flag && /^## \\[/{ exit } flag { print }' CHANGELOG.md > RELEASE_NOTES.md || true
+          awk -v ver="$version" 'index($0, "## [" ver "]") == 1 { flag=1; next } flag && index($0, "## [") == 1 { exit } flag { print }' CHANGELOG.md > RELEASE_NOTES.md || true
           if [ -s RELEASE_NOTES.md ]; then
             echo "extracted $(wc -l < RELEASE_NOTES.md) note lines for $version"
           else
