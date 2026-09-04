@@ -46,6 +46,52 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		//#endregion
+		//#region lib/client/presets.js
+		// Curated MCP server presets for one-click add. Every entry was
+		// verified against its live registry (npm/PyPI/remote endpoint);
+		// deprecated packages are deliberately excluded. {PLACEHOLDER} tokens
+		// in args become labeled inputs at add time; needsSecret entries hint
+		// the env field.
+		const PRESETS = [
+			{ id: "filesystem", label: "Filesystem", kind: "command", command: "npx",
+				args: ["-y", "@modelcontextprotocol/server-filesystem", "{DIR}"],
+				needsInput: [{ placeholder: "{DIR}", label: "允许访问的目录", defaultValue: "/tmp" }],
+				needsSecret: [],
+				description: "官方文件系统服务器：在指定目录内读写、搜索、移动文件" },
+			{ id: "memory", label: "Memory", kind: "command", command: "npx",
+				args: ["-y", "@modelcontextprotocol/server-memory"],
+				needsInput: [], needsSecret: [],
+				description: "官方知识图谱记忆服务器：跨会话记住实体与关系" },
+			{ id: "sequential-thinking", label: "Sequential Thinking", kind: "command", command: "npx",
+				args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+				needsInput: [], needsSecret: [],
+				description: "官方分步思考服务器：动态推理、修订与分支" },
+			{ id: "fetch", label: "Fetch (网页抓取)", kind: "command", command: "uvx",
+				args: ["mcp-server-fetch"],
+				needsInput: [], needsSecret: [],
+				description: "官方网页抓取服务器（Python，需本机安装 uv/uvx）" },
+			{ id: "playwright", label: "Playwright", kind: "command", command: "npx",
+				args: ["-y", "@playwright/mcp"],
+				needsInput: [], needsSecret: [],
+				description: "微软官方 Playwright MCP：浏览器自动化与无障碍树访问" },
+			{ id: "brave-search", label: "Brave Search", kind: "command", command: "npx",
+				args: ["-y", "@brave/brave-search-mcp-server", "--transport", "stdio"],
+				needsInput: [],
+				needsSecret: ["BRAVE_API_KEY"],
+				description: "Brave 官方搜索服务器：网页/图片/新闻搜索（需免费 API key）" },
+			{ id: "notion", label: "Notion", kind: "command", command: "npx",
+				args: ["-y", "@notionhq/notion-mcp-server"],
+				needsInput: [],
+				needsSecret: ["NOTION_TOKEN"],
+				description: "Notion 官方 MCP：搜索、读取、创建和更新页面与数据库（env NOTION_TOKEN=ntn_…）" },
+			{ id: "github", label: "GitHub (官方远程)", kind: "http", url: "https://api.githubcopilot.com/mcp/",
+				needsInput: [], needsSecret: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+				description: "GitHub 官方远程 MCP：issues、PR、仓库、Actions（PAT 走 Authorization 头）" },
+			{ id: "supabase", label: "Supabase", kind: "http", url: "https://mcp.supabase.com/mcp",
+				needsInput: [], needsSecret: [],
+				description: "Supabase 官方远程 MCP：查询 Postgres、管理 schema（OAuth 登录）" }
+		];
+		//#endregion
 		//#region lib/client/bridge.js
 		/**
 		* The host-half bridge lives on the dsh webserver's own origin, so plain
@@ -266,6 +312,10 @@ window.__ModuleLoader__.load({
 			const [url, setUrl] = (0, react.useState)("");
 			const [headers, setHeaders] = (0, react.useState)("");
 			const [env, setEnv] = (0, react.useState)("");
+			const [presetId, setPresetId] = (0, react.useState)("");
+			const [presetInputs, setPresetInputs] = (0, react.useState)({});
+			const activePreset = presetId ? PRESETS.find((x) => x.id === presetId) : null;
+			const activeSecret = activePreset?.needsSecret?.[0] ?? null;
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(void 0);
 			const detailsRef = (0, react.useRef)(null);
@@ -280,6 +330,19 @@ window.__ModuleLoader__.load({
 					if (key) out[key] = value;
 				}
 				return out;
+			};
+			const applyPreset = (id) => {
+				setPresetId(id);
+				const preset = PRESETS.find((x) => x.id === id);
+				setPresetInputs(Object.fromEntries((preset?.needsInput ?? []).map((inp) => {
+					const key = inp.placeholder.replace(/[{}]/g, "");
+					return [key, inp.defaultValue ?? ""];
+				})));
+				if (!preset) return;
+				setTransport(preset.kind === "http" ? "url" : "command");
+				setUrl(preset.url ?? "");
+				setCommand(preset.command ?? "");
+				setArgs(preset.args ? preset.args.join(", ") : "");
 			};
 			const submit = async (event) => {
 				event.preventDefault();
@@ -308,8 +371,15 @@ window.__ModuleLoader__.load({
 					setError("Command 必填，例如 npx -y @some/mcp-server。");
 					return;
 				}
-				const parsedArgs = args.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
-				const parsedEnv = parseEnv(env);
+				const resolvePlaceholder = (text) => String(text).replace(/\{(\w+)\}/g, (m, key) => {
+					const val = (presetInputs[key] ?? "").trim();
+					if (val !== "") return val;
+					const def = (activePreset?.needsInput ?? []).find((inp) => inp.placeholder.replace(/[{}]/g, "") === key);
+					return def?.defaultValue ?? m;
+				});
+				const parsedArgs = args.split(",").map((part) => resolvePlaceholder(part.trim())).filter((part) => part.length > 0);
+				const parsedEnv = {};
+				for (const [k, v] of Object.entries(parseEnv(env))) parsedEnv[resolvePlaceholder(k)] = resolvePlaceholder(v);
 				// 头部值里常有冒号（如 https://、Bearer xx），按第一个冒号切
 				const parsedHeaders = {};
 				for (const part of headers.split(",")) {
@@ -351,6 +421,30 @@ window.__ModuleLoader__.load({
 				(0, h)("div", { className: "apxdsh-detailsBody" },
 					(0, h)("form", { className: "apxdsh-form", onSubmit: (event) => { void submit(event); }, noValidate: true },
 						(0, h)("div", { className: "apxdsh-formGrid" },
+							(0, h)("label", { className: "apxdsh-field" },
+								(0, h)("span", { className: "apxdsh-label" }, "From catalog"),
+								(0, h)("select", {
+									className: "apxdsh-input",
+									value: presetId,
+									disabled: busy,
+									onChange: (event) => { applyPreset(event.target.value); }
+								},
+									(0, h)("option", { value: "" }, "Custom (fill in yourself)"),
+									PRESETS.map((preset) => (0, h)("option", { key: preset.id, value: preset.id }, `${preset.label} — ${preset.description.slice(0, 30)}…`))
+								)
+							),
+							(presetId !== "" && (PRESETS.find((x) => x.id === presetId)?.needsInput ?? []).length > 0)
+								? PRESETS.find((x) => x.id === presetId).needsInput.map((inp) => (0, h)("label", { className: "apxdsh-field", key: inp.placeholder },
+									(0, h)("span", { className: "apxdsh-label" }, inp.label),
+									(0, h)("input", {
+										className: "apxdsh-input",
+										type: "text",
+										value: presetInputs[inp.placeholder] ?? inp.defaultValue ?? "",
+										placeholder: inp.placeholder,
+										onChange: (event) => { setPresetInputs({ ...presetInputs, [inp.placeholder.replace(/[{}]/g, "")]: event.target.value }); }
+									})
+								))
+								: null,
 							(0, h)("label", { className: "apxdsh-field" },
 								(0, h)("span", { className: "apxdsh-label" }, "Transport"),
 								(0, h)("select", {
@@ -423,7 +517,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 									className: "apxdsh-input",
 									type: "text",
 									value: env,
-									placeholder: "KEY=VALUE, KEY2=VALUE2",
+									placeholder: activeSecret ? `${activeSecret}=你的密钥` : "KEY=VALUE, KEY2=VALUE2",
 									disabled: busy,
 									onChange: (event) => { setEnv(event.target.value); }
 								})
