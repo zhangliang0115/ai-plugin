@@ -235,7 +235,7 @@ window.__ModuleLoader__.load({
 			} else {
 				dotClass = "apxdsh-dot apxdsh-dotStopped";
 				label = "Stopped";
-				meta = "在终端运行 aipx hub start 后点 Refresh";
+				meta = "在下方 Servers 表单注册服务器后，hub 会自动随首次请求启动";
 			}
 			return (0, h)("div", { className: "apxdsh-statusRow", role: "status" },
 				(0, h)("span", { className: dotClass, "aria-hidden": true }),
@@ -758,9 +758,7 @@ window.__ModuleLoader__.load({
 						(0, h)("span", null,
 							"面板无法读取 ",
 							(0, h)("code", { className: "apxdsh-code" }, "/aipx-hub/status"),
-							`（${data.statusError}）。确认 dsh 宿主已加载 aipx-hub 插件，终端里 `,
-							(0, h)("code", { className: "apxdsh-code" }, "aipx hub status"),
-							" 显示运行中，然后点右上角 Refresh 重试。")
+							`（${data.statusError}）。确认 dsh 已安装并重启加载了 ai-plugin-toolkit 插件（Plugin list 里应能看到它），然后点右上角 Refresh 重试。`)
 					)
 					: null,
 				bridgeReady
