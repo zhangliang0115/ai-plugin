@@ -263,9 +263,22 @@ window.__ModuleLoader__.load({
 			const [command, setCommand] = (0, react.useState)("");
 			const [args, setArgs] = (0, react.useState)("");
 			const [url, setUrl] = (0, react.useState)("");
+			const [env, setEnv] = (0, react.useState)("");
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(void 0);
 			const detailsRef = (0, react.useRef)(null);
+			// "KEY=VALUE" 逗号分隔 → 对象；解析不了的条目跳过
+			const parseEnv = (text) => {
+				const out = {};
+				for (const part of String(text).split(",")) {
+					const eq = part.indexOf("=");
+					if (eq <= 0) continue;
+					const key = part.slice(0, eq).trim();
+					const value = part.slice(eq + 1).trim();
+					if (key) out[key] = value;
+				}
+				return out;
+			};
 			const submit = async (event) => {
 				event.preventDefault();
 				const trimmedName = name.trim();
@@ -287,7 +300,10 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				const parsedArgs = args.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
-				const def = byUrl ? { url: url.trim() } : { command: command.trim(), args: parsedArgs };
+				const parsedEnv = parseEnv(env);
+				const def = byUrl
+					? { url: url.trim() }
+					: { command: command.trim(), args: parsedArgs, ...(Object.keys(parsedEnv).length > 0 ? { env: parsedEnv } : {}) };
 				setBusy(true);
 				setError(void 0);
 				const answer = await bridgeRequest("/servers", {
@@ -307,6 +323,7 @@ window.__ModuleLoader__.load({
 				setCommand("");
 				setArgs("");
 				setUrl("");
+				setEnv("");
 				if (detailsRef.current !== null) detailsRef.current.open = false;
 				props.onAdded(trimmedName);
 			};
@@ -369,7 +386,18 @@ window.__ModuleLoader__.load({
 									disabled: busy,
 									onChange: (event) => { setArgs(event.target.value); }
 								})
-							) : null
+							) : null,
+							(0, h)("label", { className: "apxdsh-field" },
+								(0, h)("span", { className: "apxdsh-label" }, "Env"),
+								(0, h)("input", {
+									className: "apxdsh-input",
+									type: "text",
+									value: env,
+									placeholder: "KEY=VALUE, KEY2=VALUE2",
+									disabled: busy,
+									onChange: (event) => { setEnv(event.target.value); }
+								})
+							)
 						),
 						error !== void 0 ? (0, h)("p", { className: "apxdsh-error", role: "alert" }, error) : null,
 						(0, h)("div", { className: "apxdsh-formActions" },
