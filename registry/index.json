@@ -176,14 +176,13 @@
     {
       "name": "dsh-mcp",
       "repo": "ArvinQi/dsh-mcp",
-      "kind": "dsh-plugin",
-      "description": "Visual MCP management + on-demand tool hot-injection meta tool for dsh: per-tool toggles, OAuth (PKCE), prompt-cache-friendly tool list stabilization.",
+      "kind": "app",
+      "description": "Visual MCP management + on-demand tool hot-injection meta tool for dsh: per-tool toggles, OAuth (PKCE), prompt-cache-friendly tool list stabilization. Client-UI plugin — installs via its own loader, not `dsh plugin add` (no dsh.bundle manifest).",
       "topics": [
         "dsh-plugin",
         "mcp",
         "meta-tool"
-      ],
-      "install": "dsh plugin --profile web add \"github:ArvinQi/dsh-mcp\""
+      ]
     },
     {
       "name": "github-mcp-server",
