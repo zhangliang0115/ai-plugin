@@ -2,7 +2,7 @@
 
 # ai-plugin
 
-**One command to install any AI agent skill/plugin into the shared standard root every major harness reads.**
+**Skills into the shared standard root every major harness reads — plus an MCP hub that fronts every server with ~4 meta tools, and a console to manage it all.**
 
 Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copilot · Cursor · OpenClaw
 
@@ -33,6 +33,10 @@ every harness from a single repo.
 ```bash
 npx github:zhangliang0115/ai-plugin install <owner>/<repo>
 ```
+
+<p align="center">
+  <img src="docs/assets/hub-console.png" width="560" alt="aipx MCP hub console — server pool, tool toggles, search playground (inside dsh settings)" />
+</p>
 
 ## Why
 

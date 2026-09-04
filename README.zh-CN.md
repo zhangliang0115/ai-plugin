@@ -2,7 +2,7 @@
 
 # ai-plugin
 
-**一条命令，把任意 AI Agent 技能/插件装进主流 harness 共享的标准根。**
+**一条命令，把技能装进主流 harness 共享的标准根——外加一个用约 4 个元工具代理全部 MCP 服务器的网关与管理控制台。**
 
 Claude Code · DeepSeek Harness (dsh) · Codex CLI · Gemini CLI · GitHub Copilot · Cursor · OpenClaw
 
