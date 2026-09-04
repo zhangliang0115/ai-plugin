@@ -1,0 +1,35 @@
+name: Search quality eval
+
+# Weekly top-1 accuracy baseline for the hub's default lexical search against
+# a live reference server. Watches for ranking regressions; the hybrid-engine
+# comparison (scripts/eval-search.mjs --compare) needs python+zvec and runs
+# locally instead.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Eval lexical top-1 against the filesystem reference server
+        run: |
+          node scripts/eval-search.mjs | tee eval-result.txt
+      - name: Append to job summary
+        if: always()
+        run: |
+          {
+            echo "## Search quality eval (lexical)"
+            echo '```'
+            cat eval-result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
