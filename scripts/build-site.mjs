@@ -44,6 +44,24 @@ const cards = entries
   })
   .join('\n')
 
+const collections = registry.collections ?? []
+const collectionBlocks = collections
+  .map((c) => {
+    const rows = (c.entries ?? [])
+      .map((e) => {
+        const repo = typeof e.source === 'string' ? e.source : ''
+        const link = repo.includes('/') ? `<a class="name" href="https://github.com/${esc(repo)}">${esc(repo)}</a>` : `<span class="name">${esc(repo)}</span>`
+        return `<li>${link} — ${esc(e.why ?? '')}</li>`
+      })
+      .join('\n')
+    return `<div class="card collection">
+  <div class="card-head"><span class="name">${esc(c.name)}</span><span class="kind" style="background:#0f766e">collection</span></div>
+  <p class="desc">${esc(c.description ?? '')}</p>
+  <ul>${rows}</ul>
+</div>`
+  })
+  .join('\n')
+
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -82,7 +100,7 @@ const html = `<!doctype html>
     .name { color: #e2e8f0; }
     .topic { background: #1e293b; color: #94a3b8; }
   }
-  footer { text-align: center; color: #64748b; font-size: .85rem; padding: 2rem 0; }
+  .collection ul { margin: .5rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .35rem; font-size: .86rem; color: #334155; } .collection li a { color: #2563eb; } h2 { margin: 2.5rem 0 .5rem; font-size: 1.3rem; color: #0f172a; } footer { text-align: center; color: #64748b; font-size: .85rem; padding: 2rem 0; }
   footer a { color: inherit; }
 </style>
 </head>
@@ -96,6 +114,9 @@ aipx install &lt;owner&gt;/&lt;repo&gt;</pre></div>
   <a href="https://github.com/zhangliang0115/ai-plugin">source</a> ·
   <a href="https://github.com/zhangliang0115/ai-plugin/blob/main/CONTRIBUTING.md#submitting-a-pluginskill-to-the-registry">submit yours</a></p>
 ${cards}
+  <h2>Collections — curated stacks, one command each</h2>
+  <p class="meta">A collection bundles verified entries toward a goal. Install its pieces with the commands shown on each card.</p>
+${collectionBlocks}
 </main>
 <footer>MIT · <a href="https://github.com/zhangliang0115/ai-plugin">zhangliang0115/ai-plugin</a> · install once, run in Claude Code, DeepSeek Harness (dsh), Codex, Gemini CLI, Copilot &amp; Cursor</footer>
 </body>
