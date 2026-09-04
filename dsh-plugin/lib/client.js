@@ -720,7 +720,7 @@ window.__ModuleLoader__.load({
 								(0, h)("div", { className: "apxdsh-resultHead" },
 									(0, h)("span", { className: "apxdsh-resultName" }, result.name),
 									result.server.length > 0 ? (0, h)("span", { className: "apxdsh-tag" }, result.server) : null,
-									result.score !== null ? (0, h)("span", { className: "apxdsh-score" }, `score ${result.score.toFixed(3)}`) : null
+									result.score !== null ? (0, h)("span", { className: "apxdsh-score", title: "相对排序分：只在同一次查询内比较大小，不同查询之间不可比" }, `score ${result.score.toFixed(3)}`) : null
 								),
 								result.description.length > 0
 									? (0, h)("p", { className: "apxdsh-resultDesc" }, result.description)
