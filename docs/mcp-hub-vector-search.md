@@ -1,8 +1,8 @@
 # Hub vector search — sidecar design
 
-Status: **design** (not yet implemented). The hub ships with a deterministic
-lexical scorer; this document specifies how a vector index slots in without
-changing anything else.
+Status: **shipped**. The hub ships with a deterministic lexical scorer; the
+sidecar protocol and the zvec reference engine are implemented — see
+[Milestones](#milestones).
 
 ## The contract
 
@@ -42,42 +42,62 @@ So the vector index runs as a **separate process** the hub talks to:
 └─────────────┘   localhost HTTP    └──────────────┘
 ```
 
-## Sidecar protocol (draft)
+## Sidecar protocol
 
 Newline-delimited JSON, same framing as MCP stdio:
 
 ```jsonc
 // hub → sidecar: replace the whole catalog (per refresh)
-{"op":"build","entries":[{"id":"filesystem/read_file","text":"read file Read the complete contents…"}]}
-{"op":"ready"}                      // sidecar → hub: {"ok":true}
+{"op":"build","id":1,"entries":[{"id":"filesystem/read_file","text":"filesystem read_file Read the complete contents…"}]}
+// sidecar → hub:
+{"id":1,"result":{"ok":true,"engine":"zvec","entries":1}}
 
 // hub → sidecar: search
-{"op":"search","id":1,"query":"read file","limit":8}
+{"op":"search","id":2,"query":"read file","limit":8}
 // sidecar → hub:
-{"id":1,"result":[{"id":"filesystem/read_file","score":0.83}, …]}
+{"id":2,"result":{"results":[{"id":"filesystem/read_file","score":3.34}],"engine":"zvec"}}
 ```
 
-Embeddings for the catalog come from a local model (e.g. a small
-sentence-transformers build) or an embedding API — the sidecar owns that
-choice; the hub only ever sends text.
+Every response carries its `engine` string, so clients can observe which
+engine actually served the request (`zvec`, `zvec-hybrid`, or `tf`).
+
+Embeddings, when enabled, are the sidecar's business — the hub only ever
+sends text.
 
 ## Reference sidecar
 
-`sidecars/zvec_sidecar.py` is a protocol-complete Python reference: it
-implements build/search and ships with an idf-weighted TF engine so the
-protocol works out of the box. The zvec wiring points are marked TODO inside
-`ZvecEngine` — when the zvec Python API stabilizes, wire embeddings + ANN
-into those two hooks and the hub needs no changes.
+`sidecars/zvec_sidecar.py` is a protocol-complete Python reference with three
+engines, chosen automatically per build:
 
-Cross-language interop is verified: the Node `SidecarIndex` client drives the
-Python sidecar end-to-end (build → ranked search with idf weighting).
+| engine | needs | what it does |
+|---|---|---|
+| `zvec` | `pip install zvec` (Python 3.10–3.14) | alibaba/zvec native full-text search — BM25-style scoring, jieba-aware so Chinese descriptions match; each build writes a fresh collection to a private temp dir and swaps it in |
+| `zvec-hybrid` | `zvec` + an embeddings endpoint (see below) | dense vectors fused with FTS via Reciprocal-Rank fusion |
+| `tf` | nothing | zero-dep idf-weighted term-frequency fallback; keeps the sidecar protocol-complete where zvec is not installed |
 
-## Selection policy
+Hybrid mode switches on when the sidecar's environment has
+`AIPX_EMBEDDING_API_KEY` (any OpenAI-compatible embeddings endpoint;
+`AIPX_EMBEDDING_BASE_URL` and `AIPX_EMBEDDING_MODEL` optional, model default
+`text-embedding-3-small`). Entry ids may contain characters zvec rejects —
+the engine percent-encodes them and maps back to the originals on every hit,
+so `mcp_search` results always carry the hub's own `server/tool` ids.
 
-The hub prefers the sidecar when configured (`mcp-hub.json`:
-`"search": {"sidecar": "python path/to/zvec_sidecar.py"}`) and falls back to
-the lexical index when the sidecar is missing, slow (>2s to first token), or
-erroring — search must never hard-fail because an optional enhancer is down.
+## Wiring it into the hub
+
+```sh
+aipx mcp serve --sidecar "python3 path/to/zvec_sidecar.py"
+```
+
+or persist it in the hub config (`mcp-hub.json`):
+
+```json
+{ "search": { "sidecar": "python3 path/to/zvec_sidecar.py" } }
+```
+
+The CLI flag wins over the config value. Under the hood the hub wraps the
+sidecar with `withLexicalFallback`: if the sidecar is missing, errors, or
+times out, search degrades to lexical scoring for this hub instance —
+search never hard-fails because an optional enhancer is down.
 
 ## What vector search buys (and what it doesn't)
 
@@ -90,7 +110,7 @@ erroring — search must never hard-fail because an optional enhancer is down.
 ## Milestones
 
 1. ~~`SidecarIndex` implementing the contract over the draft protocol~~ — shipped (`src/hub/sidecar.js`)
-2. ~~Protocol conformance test~~ — `test/hub-sidecar.test.js` (mock sidecar fixture) + cross-language smoke against `sidecars/zvec_sidecar.py`
-3. Config plumbing + fallback policy — shipped (`withLexicalFallback` + `mcp-hub.json` `search.sidecar`)
+2. ~~Protocol conformance test~~ — `test/hub-sidecar.test.js` (mock sidecar fixture) + real-engine suite `test/hub-zvec.test.js` (auto-skipped where zvec is not installed)
+3. ~~Config plumbing + fallback policy~~ — shipped (`withLexicalFallback`, `aipx mcp serve --sidecar`, `mcp-hub.json` `search.sidecar`)
 4. Evaluation harness: 20 real queries, lexical vs vector, side-by-side
-5. Reference sidecar: `sidecars/zvec_sidecar.py` — protocol-complete (tf engine by default, zvec wiring points marked TODO)
+5. ~~Reference sidecar: zvec engines wired~~ — FTS (jieba-aware) + optional hybrid via Reciprocal-Rank fusion; `tf` stays as the zero-dep fallback

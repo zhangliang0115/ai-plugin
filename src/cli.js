@@ -30,7 +30,8 @@ ${c.bold('Usage')}
   aipx mcp add <name> -- cmd…     Register a stdio MCP server into the aipx hub
   aipx mcp remove <name>          Unregister a server from the aipx hub config
   aipx mcp import                 Register all discovered MCP servers into the aipx hub
-  aipx mcp serve                  Run the MCP hub over stdio (~4 meta tools, all servers behind it)
+  aipx mcp serve [--sidecar "<cmd> [args…]"]
+                                  Run the MCP hub over stdio (4 meta tools; --sidecar upgrades search to zvec FTS/hybrid, lexical fallback on failure)
   aipx doctor                     Check your environment and detect agents
   aipx --help | --version
 
@@ -69,7 +70,7 @@ Docs: https://github.com/zhangliang0115/ai-plugin#readme
 
 function parseFlags(argv) {
   const flags = { _: [] }
-  const valued = new Set(['--agents', '--dir', '--owner', '--from'])
+  const valued = new Set(['--agents', '--dir', '--owner', '--from', '--sidecar'])
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--') {
@@ -284,7 +285,23 @@ export async function main(argv) {
           // MCP stdio: stdout carries ONLY JSON-RPC — every log goes to stderr
           const logErr = (m) => console.error(m)
           logErr(`aipx mcp hub: ${names.length} server(s) registered`)
-          const hub = createHub({ servers: config.servers, log: logErr })
+          let searchIndex
+          const sidecarSpec = flags.sidecar ?? config.search?.sidecar
+          if (sidecarSpec) {
+            // --sidecar "<command> [args…]" (or mcp-hub.json search.sidecar) —
+            // one string, whitespace-split
+            const [cmd, ...sidecarArgs] = String(sidecarSpec).trim().split(/\s+/)
+            if (cmd === undefined || cmd === '') throw new Error('usage: aipx mcp serve --sidecar "<command> [args…]" — e.g. --sidecar "python3 ./sidecars/zvec_sidecar.py"')
+            const { SidecarIndex } = await import('./hub/sidecar.js')
+            const { LexicalIndex, withLexicalFallback } = await import('./hub/lexical.js')
+            logErr(`aipx mcp hub: search sidecar — ${cmd} ${sidecarArgs.join(' ')}`)
+            searchIndex = withLexicalFallback(
+              () => new SidecarIndex({ command: cmd, args: sidecarArgs, log: logErr }),
+              () => new LexicalIndex(),
+              logErr
+            )
+          }
+          const hub = createHub({ servers: config.servers, log: logErr, searchIndex })
           await serveStdio(hub, { log: logErr })
           return
         }
