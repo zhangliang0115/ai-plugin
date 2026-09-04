@@ -3,6 +3,35 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.5.2] — 2026-09-05
+
+### Added
+
+- **Prompt-cache stabilization for the hub** — the index builds from an
+  id-sorted catalog (config order no longer leaks into what the model sees),
+  unchanged catalogs skip rebuilds entirely (sidecar embed caches survive
+  `mcp_refresh`), and score ties break deterministically by id in every
+  engine. Reordered configs and repeated rebuilds now produce identical
+  model-visible result order.
+- **Console shows the live search engine** — the Search engine section reads
+  "serving: zvec-hybrid-local" (or "lexical" after a fallback), reported by
+  the sidecar through `mcp_status` (`{servers, searchEngine}`).
+- **`aipx doctor` gained an mcp hub section** — registered server count,
+  search sidecar configuration, and zvec availability in one place.
+- **Registry** — three curated batches: five gh-api-verified dsh-ecosystem
+  entries + collection, three first-party MCP servers (github, notion,
+  supabase) + official-mcp-servers collection, and four high-star repos from
+  the dsh-plugin topic (archify, ruflo, OpenViking, DeepSeek-Reasonix).
+  22 entries, all verified at submission; the Pages site now renders
+  collections too.
+- Release pages embed the curated CHANGELOG section for the tagged version.
+
+### Fixed
+
+- Console copy referenced nonexistent `aipx hub start/status` commands.
+- npm package omitted `sidecars/zvec_sidecar.py` — the documented
+  `--sidecar` flow was unusable from an npm install.
+
 ## [0.5.1] — 2026-09-05
 
 ### Added

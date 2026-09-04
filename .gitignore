@@ -20,3 +20,4 @@ dist/
 /tmp/
 site/
 __pycache__/
+RELEASE_NOTES.md

@@ -1,6 +1,6 @@
 {
   "name": "aipx",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "One command to install any AI agent skill/plugin into Claude Code, DeepSeek Harness (dsh), Codex CLI, Gemini CLI, Copilot and Cursor.",
   "license": "MIT",
   "type": "module",
