@@ -264,6 +264,7 @@ window.__ModuleLoader__.load({
 			const [command, setCommand] = (0, react.useState)("");
 			const [args, setArgs] = (0, react.useState)("");
 			const [url, setUrl] = (0, react.useState)("");
+			const [headers, setHeaders] = (0, react.useState)("");
 			const [env, setEnv] = (0, react.useState)("");
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(void 0);
@@ -309,8 +310,17 @@ window.__ModuleLoader__.load({
 				}
 				const parsedArgs = args.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
 				const parsedEnv = parseEnv(env);
+				// 头部值里常有冒号（如 https://、Bearer xx），按第一个冒号切
+				const parsedHeaders = {};
+				for (const part of headers.split(",")) {
+					const colon = part.indexOf(":");
+					if (colon <= 0) continue;
+					const key = part.slice(0, colon).trim();
+					const value = part.slice(colon + 1).trim();
+					if (key) parsedHeaders[key] = value;
+				}
 				const def = byUrl
-					? { url: url.trim() }
+					? { url: url.trim(), ...(Object.keys(parsedHeaders).length > 0 ? { headers: parsedHeaders } : {}) }
 					: { command: command.trim(), args: parsedArgs, ...(Object.keys(parsedEnv).length > 0 ? { env: parsedEnv } : {}) };
 				setBusy(true);
 				setError(void 0);
@@ -332,6 +342,7 @@ window.__ModuleLoader__.load({
 				setArgs("");
 				setUrl("");
 				setEnv("");
+				setHeaders("");
 				if (detailsRef.current !== null) detailsRef.current.open = false;
 				props.onAdded(trimmedName);
 			};
@@ -395,6 +406,17 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 									onChange: (event) => { setArgs(event.target.value); }
 								})
 							) : null,
+							(0, h)("label", { className: "apxdsh-field" },
+								(0, h)("span", { className: "apxdsh-label" }, "Headers"),
+								(0, h)("input", {
+									className: "apxdsh-input",
+									type: "text",
+									value: headers,
+									placeholder: "Authorization: Bearer xxx, X-Api-Key: yyy",
+									disabled: busy,
+									onChange: (event) => { setHeaders(event.target.value); }
+								})
+							),
 							(0, h)("label", { className: "apxdsh-field" },
 								(0, h)("span", { className: "apxdsh-label" }, "Env"),
 								(0, h)("input", {
