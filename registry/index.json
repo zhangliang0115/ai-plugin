@@ -184,6 +184,39 @@
         "meta-tool"
       ],
       "install": "dsh plugin --profile web add \"github:ArvinQi/dsh-mcp\""
+    },
+    {
+      "name": "github-mcp-server",
+      "repo": "github/github-mcp-server",
+      "kind": "app",
+      "description": "GitHub's official MCP Server: issues, PRs, repos, actions and more, for any MCP-capable agent.",
+      "topics": [
+        "mcp",
+        "github",
+        "official"
+      ]
+    },
+    {
+      "name": "notion-mcp-server",
+      "repo": "makenotion/notion-mcp-server",
+      "kind": "app",
+      "description": "Official Notion MCP Server: read, search and update Notion pages and databases from your agent.",
+      "topics": [
+        "mcp",
+        "notion",
+        "official"
+      ]
+    },
+    {
+      "name": "supabase-mcp",
+      "repo": "supabase/mcp",
+      "kind": "app",
+      "description": "Connect Supabase to your AI assistants: query Postgres, manage schemas, and operate your project over MCP.",
+      "topics": [
+        "mcp",
+        "supabase",
+        "postgres"
+      ]
     }
   ],
   "collections": [
@@ -238,6 +271,28 @@
         {
           "source": "zhangliang0115/ai-plugin",
           "why": "this repo — the hub that fronts every server with ~4 meta tools, plus the console"
+        }
+      ]
+    },
+    {
+      "name": "official-mcp-servers",
+      "description": "First-party MCP servers from the platforms developers actually use — the safest first installs",
+      "entries": [
+        {
+          "source": "github/github-mcp-server",
+          "why": "GitHub's official server — issues, PRs, CI from your agent"
+        },
+        {
+          "source": "makenotion/notion-mcp-server",
+          "why": "Notion's official server for pages and databases"
+        },
+        {
+          "source": "supabase/mcp",
+          "why": "Supabase's official server — Postgres and project operations"
+        },
+        {
+          "source": "modelcontextprotocol/servers",
+          "why": "the modelcontextprotocol reference servers (filesystem, memory, fetch…)"
         }
       ]
     }
