@@ -78,7 +78,21 @@ engines, chosen automatically per build:
 Hybrid mode switches on when the sidecar's environment has
 `AIPX_EMBEDDING_API_KEY` (any OpenAI-compatible embeddings endpoint;
 `AIPX_EMBEDDING_BASE_URL` and `AIPX_EMBEDDING_MODEL` optional, model default
-`text-embedding-3-small`). Entry ids may contain characters zvec rejects —
+`text-embedding-3-small`).
+
+Which providers actually work: the DeepSeek API (what DSH itself configures)
+serves **no `/embeddings` endpoint** — chat models cannot be reused for
+vectors. Any OpenAI-compatible embeddings provider does, e.g. Alibaba
+DashScope's compatibility mode:
+
+```sh
+export AIPX_EMBEDDING_API_KEY=sk-…                       # DashScope key
+export AIPX_EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+export AIPX_EMBEDDING_MODEL=text-embedding-v4
+```
+
+Without an embeddings endpoint the `zvec` engine still runs full-text search;
+hybrid is an additive upgrade, never a requirement. Entry ids may contain characters zvec rejects —
 the engine percent-encodes them and maps back to the originals on every hit,
 so `mcp_search` results always carry the hub's own `server/tool` ids.
 
