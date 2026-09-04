@@ -31,7 +31,7 @@ ${c.bold('Usage')}
   aipx mcp remove <name>          Unregister a server from the aipx hub config
   aipx mcp import                 Register all discovered MCP servers into the aipx hub
   aipx mcp serve [--sidecar "<cmd> [args…]"]
-                                  Run the MCP hub over stdio (4 meta tools; --sidecar upgrades search to zvec FTS/hybrid, lexical fallback on failure)
+                                  Run the MCP hub over stdio (4 meta tools; --sidecar upgrades search to zvec hybrid with a free local embedding model — no config, first build auto-downloads ~220 MB; lexical fallback on failure)
   aipx doctor                     Check your environment and detect agents
   aipx --help | --version
 

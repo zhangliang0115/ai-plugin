@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process'
  * hub only ever sends text and receives ranked ids.
  */
 export class SidecarIndex {
-  constructor({ command, args = [], buildTimeoutMs = 60_000, searchTimeoutMs = 3_000, log = () => {} } = {}) {
+  constructor({ command, args = [], buildTimeoutMs = 180_000, searchTimeoutMs = 3_000, log = () => {} } = {}) {
     this.command = command
     this.args = args
     this.buildTimeoutMs = buildTimeoutMs

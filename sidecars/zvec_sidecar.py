@@ -21,6 +21,13 @@ Engines:
       AIPX_EMBEDDING_API_KEY   (required to switch this on)
       AIPX_EMBEDDING_BASE_URL  (optional, e.g. a self-hosted endpoint)
       AIPX_EMBEDDING_MODEL     (optional, default text-embedding-3-small)
+  - "zvec-hybrid-local": same RRF fusion, with vectors from a small LOCAL
+    embedding model — no API, no cost, no configuration. Default model
+    paraphrase-multilingual-MiniLM-L12-v2 (~220 MB, EN/ZH) auto-downloads on
+    first build via fastembed (ONNX, no torch). Set AIPX_LOCAL_EMBEDDINGS=0
+    to keep pure FTS. Model source: HF_ENDPOINT defaults to
+    https://hf-mirror.com when unset — reachable from mainland China and a
+    faithful HF proxy elsewhere.
   - "tf": dependency-free idf-weighted term-frequency scorer. The fallback when
     zvec is not importable — the sidecar stays protocol-complete either way.
 
@@ -93,6 +100,71 @@ class TfEngine:
         return scored[: max(limit, 0)]
 
 
+class LocalEmbedder:
+    """Dense embeddings from a small model that auto-installs and
+    auto-downloads — zero configuration, zero API cost.
+
+    Default model sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    (~220 MB ONNX, 384 dims, EN/ZH). Measured against BAAI/bge-small-zh-v1.5
+    (~90 MB) on mixed-language tool-catalog queries it was decisively better —
+    bge-small-zh's similarities came out nearly flat ("make my app fast" ranked
+    a memory tool above a profiler), MiniLM-L12 ranked every eval query
+    correctly with wide margins. AIPX_LOCAL_EMBEDDING_MODEL overrides.
+
+    First use installs the fastembed package into the running interpreter's
+    environment and downloads the model weights; both are one-time and cached.
+    HF_ENDPOINT defaults to https://hf-mirror.com when unset — a faithful
+    Hugging Face proxy reachable from mainland China (direct huggingface.co
+    times out there, and fastembed's own fallback source measured ~50 KB/s vs
+    ~MB/s on the mirror).
+    """
+
+    DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+    def __init__(self, log):
+        self._log = log
+        os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+        self._model = self._load()
+
+    def _load(self):
+        try:
+            from fastembed import TextEmbedding
+        except ImportError:
+            self._log("fastembed not installed — installing (`%s -m pip install fastembed`)" % sys.executable)
+            import subprocess
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "fastembed"],
+                    check=True, timeout=600,
+                )
+            except Exception as exc:
+                self._log(f"fastembed install failed ({exc}) — staying full-text")
+                return None
+            try:
+                from fastembed import TextEmbedding  # noqa: F811
+            except ImportError:
+                self._log("fastembed still unimportable after install — staying full-text")
+                return None
+        model_name = os.environ.get("AIPX_LOCAL_EMBEDDING_MODEL") or self.DEFAULT_MODEL
+        try:
+            return TextEmbedding(model_name)
+        except Exception as exc:
+            self._log(f"local model {model_name} unavailable ({exc}) — staying full-text")
+            return None
+
+    @property
+    def available(self):
+        return self._model is not None
+
+    def probe_dim(self):
+        if self._model is None:
+            return None
+        return len(self.embed("dimension probe"))
+
+    def embed(self, text):
+        return list(next(iter(self._model.embed([text]))))
+
+
 class ZvecEngine:
     """Full-text / hybrid engine over alibaba/zvec.
 
@@ -111,35 +183,48 @@ class ZvecEngine:
 
     def _make_embedder(self):
         api_key = os.environ.get("AIPX_EMBEDDING_API_KEY")
-        if not api_key:
-            return None, None
-        embedder = zvec.OpenAIDenseEmbedding(
-            model=os.environ.get("AIPX_EMBEDDING_MODEL") or "text-embedding-3-small",
-            api_key=api_key,
-            base_url=os.environ.get("AIPX_EMBEDDING_BASE_URL"),
-        )
-        return embedder, int(embedder.dimension)
+        if api_key:
+            embedder = zvec.OpenAIDenseEmbedding(
+                model=os.environ.get("AIPX_EMBEDDING_MODEL") or "text-embedding-3-small",
+                api_key=api_key,
+                base_url=os.environ.get("AIPX_EMBEDDING_BASE_URL"),
+            )
+            return embedder, int(embedder.dimension)
+        if os.environ.get("AIPX_LOCAL_EMBEDDINGS", "").strip().lower() not in ("0", "false", "off"):
+            local = LocalEmbedder(self._log)
+            if local.available:
+                return local, local.probe_dim()
+            self._log("local embeddings unavailable — staying full-text (zvec FTS)")
+        return None, None
 
     def build(self, entries):
-        fresh = os.path.join(tempfile.mkdtemp(prefix="aipx-zvec-"), "coll")
+        texts = [e.get("text", "") for e in entries]
         vectors = None
         if self._embedder is not None:
-            vectors = [zvec.VectorSchema("embedding", zvec.DataType.VECTOR_FP32, self._dim)]
+            try:
+                vectors = [list(self._embedder.embed(t)) for t in texts]
+            except Exception as exc:
+                self._log(f"embedding failed ({exc}) — building full-text only")
+                self._embedder = None
+                vectors = None
+        fresh = os.path.join(tempfile.mkdtemp(prefix="aipx-zvec-"), "coll")
+        vector_schema = None
+        if vectors is not None:
+            vector_schema = [zvec.VectorSchema("embedding", zvec.DataType.VECTOR_FP32, self._dim)]
         schema = zvec.CollectionSchema(
             name="aipx-mcp-tools",
             fields=[zvec.FieldSchema("text", zvec.DataType.STRING, index_param=zvec.FtsIndexParam())],
-            vectors=vectors,
+            vectors=vector_schema,
         )
         collection = zvec.create_and_open(path=fresh, schema=schema)
         self._ids = {}
         docs = []
-        for e in entries:
-            text = e.get("text", "")
+        for e, text in zip(entries, texts):
             encoded = encode_id(e["id"])
             self._ids[encoded] = e["id"]
             doc = zvec.Doc(id=encoded, fields={"text": text})
-            if self._embedder is not None:
-                doc.vectors = {"embedding": list(self._embedder.embed(text))}
+            if vectors is not None:
+                doc.vectors = {"embedding": vectors[len(docs)]}
             docs.append(doc)
         collection.upsert(docs)
         previous = self._dir
@@ -159,8 +244,9 @@ class ZvecEngine:
                 vector_query = zvec.Query(
                     field_name="embedding", vector=list(self._embedder.embed(query))
                 )
+                # hybrid = both signals in one query list, fused by RRF
                 result = self._collection.query(
-                    queries=[fts_query], vectors=[vector_query], topk=topk, reranker=zvec.RrfReRanker()
+                    queries=[fts_query, vector_query], topk=topk, reranker=zvec.RrfReRanker()
                 )
             except Exception as exc:
                 self._log(f"zvec hybrid query failed, FTS only: {exc}")
@@ -178,7 +264,10 @@ def make_engine():
         return TfEngine(), "tf"
     try:
         engine = ZvecEngine()
-        return engine, "zvec-hybrid" if engine._embedder is not None else "zvec"
+        if engine._embedder is None:
+            return engine, "zvec"
+        name = "zvec-hybrid-local" if isinstance(engine._embedder, LocalEmbedder) else "zvec-hybrid"
+        return engine, name
     except Exception as exc:
         print(f"zvec engine unavailable ({exc}) — using the tf engine", file=sys.stderr)
         return TfEngine(), "tf"

@@ -27,7 +27,7 @@ zvecTest('zvec sidecar: build, rank, id round-trip, rebuild swap', async () => {
     const built = await index.build(entries)
     assert.equal(built.ok, true)
     assert.equal(built.entries, 3)
-    assert.match(built.engine, /^zvec(-hybrid)?$/)
+    assert.match(built.engine, /^zvec(-hybrid(-local)?)?$/)
 
     const english = await index.search('read a file from disk', 2)
     assert.equal(english[0]?.id, 'fs/read_file')

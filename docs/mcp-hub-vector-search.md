@@ -71,19 +71,23 @@ engines, chosen automatically per build:
 
 | engine | needs | what it does |
 |---|---|---|
+| `zvec-hybrid-local` | `pip install zvec` — everything else auto-installs | FTS **fused with dense vectors** from a small local embedding model (paraphrase-multilingual-MiniLM-L12-v2, ~220 MB ONNX via fastembed, no torch). The model auto-downloads on first build; no API key, no cost, no configuration. Measured: queries with zero lexical overlap ("make my app fast" → a CPU profiler tool, "保存我的修改" → a git commit tool) rank correctly top-1, where pure FTS returns nothing |
+| `zvec-hybrid` | `zvec` + an embeddings endpoint (see below) | dense vectors from any OpenAI-compatible endpoint fused with FTS via RRF — for teams that already pay for embeddings and want a stronger model |
 | `zvec` | `pip install zvec` (Python 3.10–3.14) | alibaba/zvec native full-text search — BM25-style scoring, jieba-aware so Chinese descriptions match; each build writes a fresh collection to a private temp dir and swaps it in |
-| `zvec-hybrid` | `zvec` + an embeddings endpoint (see below) | dense vectors fused with FTS via Reciprocal-Rank fusion |
 | `tf` | nothing | zero-dep idf-weighted term-frequency fallback; keeps the sidecar protocol-complete where zvec is not installed |
 
-Hybrid mode switches on when the sidecar's environment has
-`AIPX_EMBEDDING_API_KEY` (any OpenAI-compatible embeddings endpoint;
-`AIPX_EMBEDDING_BASE_URL` and `AIPX_EMBEDDING_MODEL` optional, model default
-`text-embedding-3-small`).
+Engine selection is automatic per build: remote hybrid if
+`AIPX_EMBEDDING_API_KEY` is set, else local hybrid unless
+`AIPX_LOCAL_EMBEDDINGS=0`, else full-text, with `tf` as the final fallback.
+An embedding failure mid-build degrades that build to full-text instead of
+failing the request.
 
 Which providers actually work: the DeepSeek API (what DSH itself configures)
 serves **no `/embeddings` endpoint** — chat models cannot be reused for
-vectors. Any OpenAI-compatible embeddings provider does, e.g. Alibaba
-DashScope's compatibility mode:
+vectors. But note the local engine above needs **no provider at all**; the
+remote-hybrid path is only for teams that already run one. Any
+OpenAI-compatible embeddings endpoint works, e.g. Alibaba DashScope's
+compatibility mode:
 
 ```sh
 export AIPX_EMBEDDING_API_KEY=sk-…                       # DashScope key
