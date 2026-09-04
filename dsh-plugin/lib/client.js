@@ -259,8 +259,10 @@ window.__ModuleLoader__.load({
 		*/
 		function AddServerForm(props) {
 			const [name, setName] = (0, react.useState)("");
+			const [transport, setTransport] = (0, react.useState)("command");
 			const [command, setCommand] = (0, react.useState)("");
 			const [args, setArgs] = (0, react.useState)("");
+			const [url, setUrl] = (0, react.useState)("");
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(void 0);
 			const detailsRef = (0, react.useRef)(null);
@@ -275,16 +277,22 @@ window.__ModuleLoader__.load({
 					setError("Name 不能包含空格，用 - 或 _ 连接，例如 my-server。");
 					return;
 				}
-				if (command.trim().length === 0) {
+				const byUrl = transport === "url";
+				if (byUrl && !/^https?:\/\//.test(url.trim())) {
+					setError("URL 必填且以 http:// 或 https:// 开头（streamable-HTTP 传输）。");
+					return;
+				}
+				if (!byUrl && command.trim().length === 0) {
 					setError("Command 必填，例如 npx -y @some/mcp-server。");
 					return;
 				}
 				const parsedArgs = args.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
+				const def = byUrl ? { url: url.trim() } : { command: command.trim(), args: parsedArgs };
 				setBusy(true);
 				setError(void 0);
 				const answer = await bridgeRequest("/servers", {
 					method: "POST",
-					body: { action: "add", name: trimmedName, def: { command: command.trim(), args: parsedArgs } }
+					body: { action: "add", name: trimmedName, def }
 				});
 				setBusy(false);
 				if (!answer.ok) {
@@ -298,6 +306,7 @@ window.__ModuleLoader__.load({
 				setName("");
 				setCommand("");
 				setArgs("");
+				setUrl("");
 				if (detailsRef.current !== null) detailsRef.current.open = false;
 				props.onAdded(trimmedName);
 			};
@@ -306,6 +315,18 @@ window.__ModuleLoader__.load({
 				(0, h)("div", { className: "apxdsh-detailsBody" },
 					(0, h)("form", { className: "apxdsh-form", onSubmit: (event) => { void submit(event); }, noValidate: true },
 						(0, h)("div", { className: "apxdsh-formGrid" },
+							(0, h)("label", { className: "apxdsh-field" },
+								(0, h)("span", { className: "apxdsh-label" }, "Transport"),
+								(0, h)("select", {
+									className: "apxdsh-input",
+									value: transport,
+									disabled: busy,
+									onChange: (event) => { setTransport(event.target.value); }
+								},
+									(0, h)("option", { value: "command" }, "Command (stdio)"),
+									(0, h)("option", { value: "url" }, "URL (streamable-HTTP)")
+								)
+							),
 							(0, h)("label", { className: "apxdsh-field" },
 								(0, h)("span", { className: "apxdsh-label" }, "Name"),
 								(0, h)("input", {
@@ -317,7 +338,7 @@ window.__ModuleLoader__.load({
 									onChange: (event) => { setName(event.target.value); }
 								})
 							),
-							(0, h)("label", { className: "apxdsh-field" },
+							transport === "command" ? (0, h)("label", { className: "apxdsh-field" },
 								(0, h)("span", { className: "apxdsh-label" }, "Command"),
 								(0, h)("input", {
 									className: "apxdsh-input",
@@ -327,8 +348,18 @@ window.__ModuleLoader__.load({
 									disabled: busy,
 									onChange: (event) => { setCommand(event.target.value); }
 								})
+							) : (0, h)("label", { className: "apxdsh-field" },
+								(0, h)("span", { className: "apxdsh-label" }, "URL"),
+								(0, h)("input", {
+									className: "apxdsh-input",
+									type: "url",
+									value: url,
+									placeholder: "https://mcp.example.com/mcp",
+									disabled: busy,
+									onChange: (event) => { setUrl(event.target.value); }
+								})
 							),
-							(0, h)("label", { className: "apxdsh-field" },
+							transport === "command" ? (0, h)("label", { className: "apxdsh-field" },
 								(0, h)("span", { className: "apxdsh-label" }, "Args"),
 								(0, h)("input", {
 									className: "apxdsh-input",
@@ -338,7 +369,7 @@ window.__ModuleLoader__.load({
 									disabled: busy,
 									onChange: (event) => { setArgs(event.target.value); }
 								})
-							)
+							) : null
 						),
 						error !== void 0 ? (0, h)("p", { className: "apxdsh-error", role: "alert" }, error) : null,
 						(0, h)("div", { className: "apxdsh-formActions" },
