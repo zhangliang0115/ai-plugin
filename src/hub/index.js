@@ -152,5 +152,19 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
 
   // the engine that served the last build — surfaced via mcp_status
   const searchEngine = () => engineName
-  return { refresh, search, call, catalog, status, searchEngine, stop }
+
+  // full tool catalog for operator surfaces (aipx/catalog JSON-RPC method);
+  // ensures a refresh happened so the map is populated
+  async function ensureCatalog() {
+    await ensureRefreshed()
+    return [...catalog().entries()].map(([id, t]) => ({
+      id,
+      server: t.server,
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    }))
+  }
+
+  return { refresh, search, call, catalog, ensureCatalog, status, searchEngine, stop }
 }

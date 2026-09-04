@@ -71,6 +71,10 @@ export function createMessageHandler(hub, log = () => {}) {
         return null
       case 'ping':
         return reply({})
+      case 'aipx/catalog':
+        // operator surface (the hub console bridge), deliberately NOT a meta
+        // tool — the model never sees the full catalog
+        return reply({ tools: await hub.ensureCatalog() })
       case 'tools/list':
         return reply({ tools: META_TOOLS })
       case 'tools/call': {

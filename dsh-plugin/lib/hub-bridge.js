@@ -32,7 +32,6 @@ const CLIENT_INFO = { name: 'ai-plugin-toolkit-dsh', version: '0.0.0' }
  * description matches enough of them to score positive, and the caller's
  * limit caps the result.
  */
-const FULL_CATALOG_QUERY = 'a e i o u r s t l n c d m p h g b f w'
 
 /** Same resolution order as the aipx CLI itself (src/util.js configDir). */
 function defaultConfigPath() {
@@ -131,8 +130,9 @@ export class HubBridge {
    * so this is mcp_search with the broad-recall query.
    */
   async tools(limit = DEFAULT_TOOLS_LIMIT) {
-    const rows = await this._search(FULL_CATALOG_QUERY, positiveInt(Math.floor(Number(limit)), DEFAULT_TOOLS_LIMIT), REQUEST_TIMEOUT_MS)
-    return { tools: rows }
+    const result = await this._request('aipx/catalog', {}, REQUEST_TIMEOUT_MS)
+    const tools = Array.isArray(result?.tools) ? result.tools : []
+    return { tools: tools.slice(0, positiveInt(limit, DEFAULT_TOOLS_LIMIT)) }
   }
 
   /** mcp_search passthrough — ranked {id, server, name, description, inputSchema} rows. */
