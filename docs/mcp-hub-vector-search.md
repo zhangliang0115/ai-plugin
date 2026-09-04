@@ -130,5 +130,5 @@ search never hard-fails because an optional enhancer is down.
 1. ~~`SidecarIndex` implementing the contract over the draft protocol~~ — shipped (`src/hub/sidecar.js`)
 2. ~~Protocol conformance test~~ — `test/hub-sidecar.test.js` (mock sidecar fixture) + real-engine suite `test/hub-zvec.test.js` (auto-skipped where zvec is not installed)
 3. ~~Config plumbing + fallback policy~~ — shipped (`withLexicalFallback`, `aipx mcp serve --sidecar`, `mcp-hub.json` `search.sidecar`)
-4. Evaluation harness: 20 real queries, lexical vs vector, side-by-side
+4. ~~Evaluation harness~~ — shipped (`scripts/eval-search.mjs --compare`, 20 queries × 3 engines against a live filesystem server). 2026-09-05 results: **lexical 8/20, zvec-fts 7/20, zvec-hybrid-local 14/20** — the hybrid engine nearly doubles lexical accuracy, driven by Chinese/paraphrased queries (lexical gets 0/10 on those; hybrid 9/10). Two English lexical wins flip to miss under RRF fusion when a server ships near-duplicate tools (`read_file` vs `read_text_file`) — tool-level enable/disable is the follow-up there, not more model.
 5. ~~Reference sidecar: zvec engines wired~~ — FTS (jieba-aware) + optional hybrid via Reciprocal-Rank fusion; `tf` stays as the zero-dep fallback

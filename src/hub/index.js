@@ -113,9 +113,14 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     }))
   }
 
+  // the full tool catalog keyed by "server/tool" — same shape refresh builds
+  function catalog() {
+    return entriesById
+  }
+
   async function stop() {
     for (const d of downstreams.values()) d.stop()
   }
 
-  return { refresh, search, call, status, stop }
+  return { refresh, search, call, catalog, status, stop }
 }
