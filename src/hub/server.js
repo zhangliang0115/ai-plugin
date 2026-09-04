@@ -124,6 +124,10 @@ export async function serveStdio(hub, { input = process.stdin, output = process.
 
   // refresh first: requests sent by the client sit in the pipe until we attach
   await hub.refresh().catch((e) => log(`initial refresh failed: ${e.message}`))
+  // operators confirm the hybrid upgrade from this one stderr line
+  if (typeof hub.searchEngine === 'function') {
+    log(`search engine: ${hub.searchEngine()}`)
+  }
 
   const rl = createInterface({ input })
   const write = (obj) => {
