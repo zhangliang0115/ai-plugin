@@ -718,6 +718,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			const [query, setQuery] = (0, react.useState)("");
 			const [phase, setPhase] = (0, react.useState)("idle");
 			const [results, setResults] = (0, react.useState)([]);
+			const [servedBy, setServedBy] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(void 0);
 			const submit = async (event) => {
 				event.preventDefault();
@@ -737,6 +738,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 						: `搜索失败：${answer.error}。确认 hub 在运行后重试。`);
 					return;
 				}
+				setServedBy(typeof answer.value.engine === "string" ? answer.value.engine : null);
 				setResults(answer.value.results.map((result) => ({
 					id: stringOr(result?.id, ""),
 					name: stringOr(result?.name, stringOr(result?.id, "(unnamed)")),
@@ -748,7 +750,8 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			};
 			return (0, h)("section", { className: "apxdsh-section", "aria-label": "Search playground" },
 				(0, h)("div", { className: "apxdsh-sectionHead" },
-					(0, h)("h3", { className: "apxdsh-sectionTitle" }, "Search playground")
+					(0, h)("h3", { className: "apxdsh-sectionTitle" }, "Search playground"),
+					servedBy !== null ? (0, h)("span", { className: "apxdsh-summaryMeta", title: "服务本次查询的检索引擎" }, `serving: ${servedBy}`) : null
 				),
 				(0, h)("p", { className: "apxdsh-intro" },
 					"模拟模型视角：这句查询会原样发给 hub 的 mcp_search 索引，返回的卡片就是模型能「看见」的工具。"),

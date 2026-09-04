@@ -132,13 +132,15 @@ export class HubBridge {
   async tools(limit = DEFAULT_TOOLS_LIMIT) {
     const result = await this._request('aipx/catalog', {}, REQUEST_TIMEOUT_MS)
     const tools = Array.isArray(result?.tools) ? result.tools : []
-    return { tools: tools.slice(0, positiveInt(limit, DEFAULT_TOOLS_LIMIT)) }
+    this.searchEngine = typeof result?.searchEngine === 'string' ? result.searchEngine : null
+    return { tools: tools.slice(0, positiveInt(limit, DEFAULT_TOOLS_LIMIT)), engine: this.searchEngine }
   }
 
-  /** mcp_search passthrough — ranked {id, server, name, description, inputSchema} rows. */
+  /** mcp_search passthrough — ranked rows + the engine that served them. */
   async search(query, limit = SEARCH_DEFAULT_LIMIT) {
-    const rows = await this._search(String(query ?? ''), positiveInt(Math.floor(Number(limit)), SEARCH_DEFAULT_LIMIT), SEARCH_TIMEOUT_MS)
-    return { results: rows }
+    const results = { results: await this._search(String(query ?? ''), positiveInt(Math.floor(Number(limit)), SEARCH_DEFAULT_LIMIT), SEARCH_TIMEOUT_MS) }
+    if (this.searchEngine) results.engine = this.searchEngine
+    return results
   }
 
   /** The parsed mcp-hub.json; a missing or corrupt file reads as {servers: {}} — same policy as the hub. */
