@@ -28,10 +28,27 @@ jobs:
             if [ "$ok" != "1" ]; then fail=1; echo "::error::persistent failure: $f"; fi
           done
           exit $fail
+      - name: Extract release notes from CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '$0 ~ "^## \\[" ver "\\]" { flag=1; next } flag && /^## \\[/{ exit } flag { print }' CHANGELOG.md > RELEASE_NOTES.md || true
+          if [ -s RELEASE_NOTES.md ]; then
+            echo "extracted $(wc -l < RELEASE_NOTES.md) note lines for $version"
+          else
+            echo "no CHANGELOG section for $version — falling back to generated notes"
+            rm -f RELEASE_NOTES.md
+          fi
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "aipx ${{ github.ref_name }}" \
-            --generate-notes
+          if [ -s RELEASE_NOTES.md ]; then
+            gh release create "${{ github.ref_name }}" \
+              --title "aipx ${{ github.ref_name }}" \
+              --notes-file RELEASE_NOTES.md \
+              --generate-notes
+          else
+            gh release create "${{ github.ref_name }}" \
+              --title "aipx ${{ github.ref_name }}" \
+              --generate-notes
+          fi
