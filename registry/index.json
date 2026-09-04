@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-08-31",
+  "updated": "2026-09-05",
   "note": "Curated starting points for AI agent skills and plugins. Every entry was verified to exist at submission time. Collections bundle verified entries toward a goal — install a whole stack with one command. PRs welcome — see CONTRIBUTING.md.",
   "plugins": [
     {
@@ -124,6 +124,66 @@
         "playwright"
       ],
       "install": "see repo README (npx @playwright/mcp - add to hub config: command npx, args @playwright/mcp)"
+    },
+    {
+      "name": "dsh-skill-mcp-panel",
+      "repo": "Fishquito7/dsh-skill-mcp-panel",
+      "kind": "dsh-plugin",
+      "description": "DSH web UI plugin for skills and MCP management: manages cordis.patch.yml blocks, connection testing, key masking, HMR hot reload. The most-starred community MCP panel for dsh.",
+      "topics": [
+        "dsh-plugin",
+        "mcp",
+        "web-ui"
+      ],
+      "install": "dsh plugin --profile web add \"github:Fishquito7/dsh-skill-mcp-panel\""
+    },
+    {
+      "name": "dsh-config-manager",
+      "repo": "xiajiajun516/dsh-config-manager",
+      "kind": "app",
+      "description": "Backup, restore, migrate and sync the full DSH configuration (including MCP servers) via Git or WebDAV, with a config marketplace.",
+      "topics": [
+        "dsh",
+        "config",
+        "backup",
+        "sync"
+      ]
+    },
+    {
+      "name": "dsh-skills-mcp-manager",
+      "repo": "zebbkira/dsh-skills-mcp-manager",
+      "kind": "dsh-plugin",
+      "description": "Official-style plugin package for the dsh web GUI: manage skills and MCP servers from a settings card with real connect/disconnect and live status.",
+      "topics": [
+        "dsh-plugin",
+        "mcp",
+        "skills"
+      ],
+      "install": "dsh plugin --profile web add \"github:zebbkira/dsh-skills-mcp-manager\""
+    },
+    {
+      "name": "dsh-mcp-manager-ui",
+      "repo": "Imzl-zl/dsh-mcp-manager-ui",
+      "kind": "dsh-plugin",
+      "description": "Floating MCP management panel for dsh web: global + project scopes, tool JSON-schema browsing, and a built-in catalog of popular MCP presets.",
+      "topics": [
+        "dsh-plugin",
+        "mcp",
+        "web-ui"
+      ],
+      "install": "dsh plugin --profile web add \"github:Imzl-zl/dsh-mcp-manager-ui\""
+    },
+    {
+      "name": "dsh-mcp",
+      "repo": "ArvinQi/dsh-mcp",
+      "kind": "dsh-plugin",
+      "description": "Visual MCP management + on-demand tool hot-injection meta tool for dsh: per-tool toggles, OAuth (PKCE), prompt-cache-friendly tool list stabilization.",
+      "topics": [
+        "dsh-plugin",
+        "mcp",
+        "meta-tool"
+      ],
+      "install": "dsh plugin --profile web add \"github:ArvinQi/dsh-mcp\""
     }
   ],
   "collections": [
@@ -156,6 +216,28 @@
         {
           "source": "zhangliang0115/ai-plugin",
           "why": "cross-agent authoring, auditing and cost-routing skills"
+        }
+      ]
+    },
+    {
+      "name": "dsh-ecosystem",
+      "description": "Community management UIs and tooling around DeepSeek Harness (dsh) — panels, config tooling, and the harness itself",
+      "entries": [
+        {
+          "source": "Fishquito7/dsh-skill-mcp-panel",
+          "why": "the most-starred community skills+MCP panel for dsh web"
+        },
+        {
+          "source": "xiajiajun516/dsh-config-manager",
+          "why": "config backup/sync/marketplace for the whole harness"
+        },
+        {
+          "source": "ArvinQi/dsh-mcp",
+          "why": "early take on MCP meta-tools + visual management inside dsh"
+        },
+        {
+          "source": "zhangliang0115/ai-plugin",
+          "why": "this repo — the hub that fronts every server with ~4 meta tools, plus the console"
         }
       ]
     }
