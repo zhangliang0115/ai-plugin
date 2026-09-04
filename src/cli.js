@@ -1,3 +1,5 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { doctor } from './doctor.js'
 import { install } from './install.js'
 import { lintPath } from './lint.js'
@@ -11,6 +13,8 @@ import { upgrade } from './upgrade.js'
 import { VERSION } from './version.js'
 import { c, fail, info, ok, warn } from './util.js'
 
+
+const PKG_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 
 const HELP = `
 ${c.bold('aipx')} — install any AI agent skill/plugin into every agent, once.
@@ -286,7 +290,11 @@ export async function main(argv) {
           const logErr = (m) => console.error(m)
           logErr(`aipx mcp hub: ${names.length} server(s) registered`)
           let searchIndex
-          const sidecarSpec = flags.sidecar ?? config.search?.sidecar
+          const sidecarSpecRaw = flags.sidecar ?? config.search?.sidecar
+          // --sidecar zvec → resolve to the sidecar shipped inside this package
+          const sidecarSpec = sidecarSpecRaw === 'zvec'
+            ? `python3 ${path.join(PKG_ROOT, 'sidecars', 'zvec_sidecar.py')}`
+            : sidecarSpecRaw
           if (sidecarSpec) {
             // --sidecar "<command> [args…]" (or mcp-hub.json search.sidecar) —
             // one string, whitespace-split

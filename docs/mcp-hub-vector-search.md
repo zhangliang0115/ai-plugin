@@ -104,6 +104,9 @@ so `mcp_search` results always carry the hub's own `server/tool` ids.
 
 ```sh
 aipx mcp serve --sidecar "python3 path/to/zvec_sidecar.py"
+
+Short form — `--sidecar zvec` resolves to the sidecar shipped inside the
+aipx package itself, so an npm-installed CLI needs no path at all:
 ```
 
 or persist it in the hub config (`mcp-hub.json`):
