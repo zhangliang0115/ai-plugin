@@ -29,9 +29,15 @@ export function tokenize(text) {
     .filter((t) => t.length > 0 && !STOPWORDS.has(t))
 }
 
-export function createHub({ servers, log = () => {}, downstreamFactory, searchIndex } = {}) {
+export function createHub({ servers, log = () => {}, downstreamFactory, searchIndex, disabledTools } = {}) {
   const index = searchIndex ?? new LexicalIndex()
   const downstreams = new Map()
+  // tool ids ("server/tool") the console toggled off: dropped at refresh time
+  // so search never ranks them, call reports them unknown, and status counts
+  // shrink to match — the downstream processes themselves stay untouched
+  const disabled = new Set(
+    Array.isArray(disabledTools) ? disabledTools.filter((t) => typeof t === 'string' && t !== '') : []
+  )
   const makeDefault = (name, def) =>
     def.url ? new HttpDownstream(name, def, log) : new StdioDownstream(name, def, log)
   const factory = downstreamFactory ?? makeDefault
@@ -64,6 +70,9 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
         results.push({ name, tools: 0, status: `error: ${e.message}` })
       }
     }
+    // filter disabled ids out after the catalog is built and before the index
+    // sees it — one deletion point covers search, call, and status
+    for (const id of disabled) next.delete(id)
     entriesById = next
     await index.build(
       [...entriesById.entries()].map(([id, t]) => ({

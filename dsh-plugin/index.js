@@ -145,6 +145,16 @@ const HUB_ROUTES = [
     path: '/aipx-hub/servers',
     handle: (bridge, body) => bridge.setServer(body.action, body.name, body.def),
   },
+  {
+    method: 'POST',
+    path: '/aipx-hub/tools/toggle',
+    handle: (bridge, body) => bridge.toggleTool(body.id, body.disabled),
+  },
+  {
+    method: 'POST',
+    path: '/aipx-hub/settings',
+    handle: (bridge, body) => bridge.setSettings(body.sidecar),
+  },
 ]
 
 const HUB_BODY_CAP = 1 << 20 // server definitions are tiny; the cap is abuse guard

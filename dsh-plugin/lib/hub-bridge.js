@@ -53,6 +53,11 @@ function positiveInt(value, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
+/** The config's disabledTools as a fresh string array — junk entries dropped. */
+function sanitizeDisabledTools(value) {
+  return Array.isArray(value) ? value.filter((t) => typeof t === 'string' && t !== '') : []
+}
+
 /** Accept {command, args?, env?} (stdio) or {url} (http) — the shapes createHub understands. */
 function normalizeServerDef(def) {
   if (def === null || typeof def !== 'object') {
@@ -172,6 +177,57 @@ export class HubBridge {
     await this._saveConfig(config)
     this._disposeChild()
     return config
+  }
+
+  /**
+   * Enable/disable one downstream tool by id ("server/tool"): the id moves in
+   * or out of mcp-hub.json's `disabledTools` (deduped, order preserved), then
+   * the hub child is dropped so the next request respawns without it.
+   * Returns {ok: true, disabledTools: [...]}.
+   */
+  async toggleTool(id, disabled) {
+    if (typeof id !== 'string' || id === '' || !id.includes('/')) {
+      throw invalid(`tool id must be a non-empty string shaped "server/tool", got ${JSON.stringify(id ?? null)}`)
+    }
+    if (typeof disabled !== 'boolean') {
+      throw invalid(`disabled must be a boolean, got ${JSON.stringify(disabled ?? null)}`)
+    }
+    const config = await this.getConfig()
+    const current = sanitizeDisabledTools(config.disabledTools)
+    if (disabled) {
+      if (!current.includes(id)) current.push(id)
+    } else {
+      const i = current.indexOf(id)
+      if (i !== -1) current.splice(i, 1)
+    }
+    config.disabledTools = current
+    await this._saveConfig(config)
+    this._disposeChild()
+    return { ok: true, disabledTools: config.disabledTools }
+  }
+
+  /**
+   * Update hub settings: `sidecar` (one "<command> [args…]" string) lands in
+   * mcp-hub.json's search.sidecar; null removes the whole `search` key. Either
+   * way the hub child is dropped so the next request respawns on the fresh
+   * config. Returns {ok: true, search: {sidecar} | null}.
+   */
+  async setSettings(sidecar) {
+    if (sidecar !== null && (typeof sidecar !== 'string' || sidecar.trim() === '')) {
+      throw invalid(`sidecar must be a non-empty string or null, got ${JSON.stringify(sidecar ?? null)}`)
+    }
+    const config = await this.getConfig()
+    let result
+    if (sidecar === null) {
+      delete config.search
+      result = null
+    } else {
+      config.search = { ...config.search, sidecar }
+      result = { sidecar }
+    }
+    await this._saveConfig(config)
+    this._disposeChild()
+    return { ok: true, search: result }
   }
 
   /** Kill the hub child and forget all state. Idempotent; safe mid-request. */

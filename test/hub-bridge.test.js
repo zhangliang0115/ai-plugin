@@ -99,6 +99,68 @@ test('hub bridge: status, tools, search, config add/remove against a real aipx m
   })
 })
 
+test('hub bridge: tools/toggle and settings rewrite the config and restart the hub', async () => {
+  await withHubEnv(async ({ configPath }) => {
+    const { HubBridge } = await import('../dsh-plugin/lib/hub-bridge.js')
+    const bridge = new HubBridge({ configPath })
+    try {
+      // ---- toggle round 1: disable mini/echo ----
+      const off = await bridge.toggleTool('mini/echo', true)
+      assert.deepEqual(off, { ok: true, disabledTools: ['mini/echo'] })
+      let raw = JSON.parse(await readFile(configPath, 'utf8'))
+      assert.deepEqual(raw.disabledTools, ['mini/echo'])
+
+      // the respawned hub no longer serves the tool
+      const st = await bridge.status()
+      assert.equal(st.servers.mini.tools, 0)
+      const hits = (await bridge.search('echo text', 5)).results
+      assert.ok(!hits.some((t) => t.id === 'mini/echo'), `mini/echo must vanish: ${JSON.stringify(hits)}`)
+
+      // id validation: caller mistakes are 400-grade, nothing is written
+      await assert.rejects(bridge.toggleTool('no-slash', true), (e) => e.status === 400)
+      await assert.rejects(bridge.toggleTool('', true), (e) => e.status === 400)
+      await assert.rejects(bridge.toggleTool(42, true), (e) => e.status === 400)
+      await assert.rejects(bridge.toggleTool('mini/echo', 'yes'), (e) => e.status === 400)
+
+      // ---- toggle round 2: re-enable, the tool is back ----
+      const on = await bridge.toggleTool('mini/echo', false)
+      assert.deepEqual(on, { ok: true, disabledTools: [] })
+      raw = JSON.parse(await readFile(configPath, 'utf8'))
+      assert.deepEqual(raw.disabledTools, [])
+      const again = (await bridge.search('echo text', 5)).results
+      assert.equal(again[0]?.id, 'mini/echo')
+
+      // re-disabling is deduped: one entry, order preserved
+      await bridge.toggleTool('mini/echo', true)
+      const dup = await bridge.toggleTool('mini/echo', true)
+      assert.deepEqual(dup.disabledTools, ['mini/echo'])
+
+      // ---- settings: sidecar lands in search.sidecar, restart stays healthy ----
+      // a command that exits immediately proves the lexical fallback keeps the
+      // restarted hub serving even though the sidecar itself is broken
+      const spec = `${process.execPath} /nonexistent/aipx-sidecar.mjs`
+      const withSidecar = await bridge.setSettings(spec)
+      assert.deepEqual(withSidecar, { ok: true, search: { sidecar: spec } })
+      raw = JSON.parse(await readFile(configPath, 'utf8'))
+      assert.equal(raw.search.sidecar, spec)
+      assert.deepEqual(raw.disabledTools, ['mini/echo']) // other keys survive
+      const st2 = await bridge.status()
+      assert.equal(st2.servers.mini.tools, 0, 'restarted hub picked up the sidecar config')
+      await assert.rejects(bridge.setSettings(''), (e) => e.status === 400)
+      await assert.rejects(bridge.setSettings(42), (e) => e.status === 400)
+
+      // null clears the whole search key, not just sidecar
+      const cleared = await bridge.setSettings(null)
+      assert.deepEqual(cleared, { ok: true, search: null })
+      raw = JSON.parse(await readFile(configPath, 'utf8'))
+      assert.equal(raw.search, undefined)
+      assert.deepEqual(raw.disabledTools, ['mini/echo'])
+    } finally {
+      await bridge.stop()
+    }
+  })
+})
+
 test('hub bridge: stop() kills the child and the next call respawns it', async () => {
   await withHubEnv(async ({ configPath }) => {
     const { HubBridge } = await import('../dsh-plugin/lib/hub-bridge.js')

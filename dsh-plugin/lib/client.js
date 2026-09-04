@@ -36,7 +36,7 @@ window.__ModuleLoader__.load({
 		* theme instead of assuming a background. The one signature motion is the hub
 		* status dot's breath; `prefers-reduced-motion` stills it.
 		*/
-		const css = ".apxdsh-root{display:flex;flex-direction:column;gap:24px;width:100%;max-width:720px;min-width:0;color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px}.apxdsh-muted{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}.apxdsh-code{font-family:var(--ds-font-family-code);font-size:.92em;background:var(--dsw-alias-bg-layer-1);border-radius:4px;padding:1px 5px}.apxdsh-error{color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px;margin:0}.apxdsh-savedNotice{color:var(--dsw-alias-state-success-primary);font-size:12px;line-height:18px;margin:0}.apxdsh-statusRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.apxdsh-statusLabel{font-weight:500}.apxdsh-statusMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.apxdsh-refresh{margin-left:auto}.apxdsh-dot{box-sizing:border-box;border-radius:50%;width:8px;height:8px;flex:none;display:inline-block}.apxdsh-dotRunning{background:var(--dsw-alias-state-success-primary);animation:apxdsh-breathe 2.6s ease-in-out infinite}.apxdsh-dotStopped{background:var(--dsw-alias-state-error-primary)}.apxdsh-dotWarn{background:var(--dsw-alias-state-warn-label)}.apxdsh-dotIdle{background:var(--dsw-alias-border-l3)}.apxdsh-dotOk{background:var(--dsw-alias-state-success-primary)}@keyframes apxdsh-breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.82)}}.apxdsh-section{display:flex;flex-direction:column;gap:10px;min-width:0}.apxdsh-sectionHead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.apxdsh-sectionTitle{margin:0;font-size:14px;font-weight:500;line-height:22px}.apxdsh-sectionMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.apxdsh-intro{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}.apxdsh-notice{display:flex;flex-direction:column;gap:4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;padding:12px 14px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}.apxdsh-noticeTitle{color:var(--dsw-alias-state-warn-label);font-weight:500}.apxdsh-empty{border:1px dashed var(--dsw-alias-border-l3);border-radius:10px;padding:12px 14px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:20px;margin:0}.apxdsh-tableScroll{overflow-x:auto;min-width:0}.apxdsh-table{width:100%;border-collapse:collapse;font-size:13px}.apxdsh-table th{text-align:left;padding:6px 10px;border-bottom:.5px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-tertiary);font-size:11px;font-weight:500;line-height:16px;white-space:nowrap}.apxdsh-table td{padding:9px 10px;border-bottom:.5px solid var(--dsw-alias-border-l4);vertical-align:top}.apxdsh-table tbody tr:last-child td{border-bottom:none}.apxdsh-serverName{font-weight:500;white-space:nowrap}.apxdsh-serverCommand{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-serverError{color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;margin-top:2px;white-space:normal}.apxdsh-statusCell{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary)}.apxdsh-toolCount{font-family:var(--ds-font-family-code);font-size:12px}.apxdsh-actionCell{text-align:right;white-space:nowrap}.apxdsh-details{border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;min-width:0}.apxdsh-summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);border-radius:12px}.apxdsh-summary::-webkit-details-marker{display:none}.apxdsh-summary::before{content:\"\";width:5px;height:5px;flex:none;border-bottom:1.5px solid currentColor;border-right:1.5px solid currentColor;transform:rotate(-45deg) translate(-1px,-1px);transition:transform 120ms ease}.apxdsh-details[open]>.apxdsh-summary::before{transform:rotate(45deg) translate(-1px,-1px)}.apxdsh-summary:hover{background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-summaryMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400}.apxdsh-detailsBody{display:flex;flex-direction:column;gap:10px;padding:2px 14px 14px;min-width:0}.apxdsh-form{display:flex;flex-direction:column;gap:10px;min-width:0}.apxdsh-formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.apxdsh-field{display:flex;flex-direction:column;gap:4px;min-width:0}.apxdsh-label{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500;line-height:18px}.apxdsh-formActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.apxdsh-hint{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px}.apxdsh-input{box-sizing:border-box;width:100%;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-input:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-input::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:none;border-radius:16px;font:inherit;font-size:13px;line-height:18px;cursor:pointer;background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.apxdsh-button:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.apxdsh-button:disabled{opacity:.4;cursor:default}.apxdsh-ghostButton{background:transparent;color:var(--dsw-alias-label-primary);border:.5px solid var(--dsw-alias-border-l3)}.apxdsh-ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-dangerButton{background:transparent;color:var(--dsw-alias-state-error-primary);border:.5px solid var(--dsw-alias-border-l3)}.apxdsh-dangerButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.apxdsh-smallButton{height:26px;padding:0 10px;font-size:12px;border-radius:13px}.apxdsh-button:focus-visible,.apxdsh-summary:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}.apxdsh-toolList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto}.apxdsh-toolItem{display:flex;align-items:baseline;gap:10px;padding:5px 8px;border-radius:6px;min-width:0}.apxdsh-toolItem:hover{background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-toolId{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-toolDesc{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-searchForm{display:flex;gap:8px;min-width:0}.apxdsh-searchForm .apxdsh-input{flex:1 1 auto;min-width:0}.apxdsh-searchForm .apxdsh-button{flex:none}.apxdsh-results{display:flex;flex-direction:column;gap:8px;min-width:0}.apxdsh-result{display:flex;flex-direction:column;gap:4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;padding:10px 12px;min-width:0}.apxdsh-resultHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-resultName{font-weight:500;font-size:13px}.apxdsh-tag{border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:1px 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);font-family:var(--ds-font-family-code)}.apxdsh-score{margin-left:auto;font-family:var(--ds-font-family-code);font-size:11px;color:var(--dsw-alias-label-tertiary)}.apxdsh-resultDesc{margin:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}@media (max-width:480px){.apxdsh-serverCommand{max-width:160px}}@media (prefers-reduced-motion:reduce){.apxdsh-dotRunning{animation:none}.apxdsh-summary::before{transition:none}}";
+		const css = ".apxdsh-root{display:flex;flex-direction:column;gap:24px;width:100%;max-width:720px;min-width:0;color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px}.apxdsh-muted{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}.apxdsh-code{font-family:var(--ds-font-family-code);font-size:.92em;background:var(--dsw-alias-bg-layer-1);border-radius:4px;padding:1px 5px}.apxdsh-error{color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px;margin:0}.apxdsh-savedNotice{color:var(--dsw-alias-state-success-primary);font-size:12px;line-height:18px;margin:0}.apxdsh-statusRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.apxdsh-statusLabel{font-weight:500}.apxdsh-statusMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.apxdsh-refresh{margin-left:auto}.apxdsh-dot{box-sizing:border-box;border-radius:50%;width:8px;height:8px;flex:none;display:inline-block}.apxdsh-dotRunning{background:var(--dsw-alias-state-success-primary);animation:apxdsh-breathe 2.6s ease-in-out infinite}.apxdsh-dotStopped{background:var(--dsw-alias-state-error-primary)}.apxdsh-dotWarn{background:var(--dsw-alias-state-warn-label)}.apxdsh-dotIdle{background:var(--dsw-alias-border-l3)}.apxdsh-dotOk{background:var(--dsw-alias-state-success-primary)}@keyframes apxdsh-breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.82)}}.apxdsh-section{display:flex;flex-direction:column;gap:10px;min-width:0}.apxdsh-sectionHead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.apxdsh-sectionTitle{margin:0;font-size:14px;font-weight:500;line-height:22px}.apxdsh-sectionMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.apxdsh-intro{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}.apxdsh-notice{display:flex;flex-direction:column;gap:4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;padding:12px 14px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}.apxdsh-noticeTitle{color:var(--dsw-alias-state-warn-label);font-weight:500}.apxdsh-empty{border:1px dashed var(--dsw-alias-border-l3);border-radius:10px;padding:12px 14px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:20px;margin:0}.apxdsh-tableScroll{overflow-x:auto;min-width:0}.apxdsh-table{width:100%;border-collapse:collapse;font-size:13px}.apxdsh-table th{text-align:left;padding:6px 10px;border-bottom:.5px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-tertiary);font-size:11px;font-weight:500;line-height:16px;white-space:nowrap}.apxdsh-table td{padding:9px 10px;border-bottom:.5px solid var(--dsw-alias-border-l4);vertical-align:top}.apxdsh-table tbody tr:last-child td{border-bottom:none}.apxdsh-serverName{font-weight:500;white-space:nowrap}.apxdsh-serverCommand{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-serverError{color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;margin-top:2px;white-space:normal}.apxdsh-statusCell{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary)}.apxdsh-toolCount{font-family:var(--ds-font-family-code);font-size:12px}.apxdsh-actionCell{text-align:right;white-space:nowrap}.apxdsh-details{border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;min-width:0}.apxdsh-summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);border-radius:12px}.apxdsh-summary::-webkit-details-marker{display:none}.apxdsh-summary::before{content:\"\";width:5px;height:5px;flex:none;border-bottom:1.5px solid currentColor;border-right:1.5px solid currentColor;transform:rotate(-45deg) translate(-1px,-1px);transition:transform 120ms ease}.apxdsh-details[open]>.apxdsh-summary::before{transform:rotate(45deg) translate(-1px,-1px)}.apxdsh-summary:hover{background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-summaryMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400}.apxdsh-detailsBody{display:flex;flex-direction:column;gap:10px;padding:2px 14px 14px;min-width:0}.apxdsh-form{display:flex;flex-direction:column;gap:10px;min-width:0}.apxdsh-formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.apxdsh-field{display:flex;flex-direction:column;gap:4px;min-width:0}.apxdsh-label{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500;line-height:18px}.apxdsh-formActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.apxdsh-hint{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px}.apxdsh-input{box-sizing:border-box;width:100%;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-input:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-input::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:none;border-radius:16px;font:inherit;font-size:13px;line-height:18px;cursor:pointer;background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.apxdsh-button:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.apxdsh-button:disabled{opacity:.4;cursor:default}.apxdsh-ghostButton{background:transparent;color:var(--dsw-alias-label-primary);border:.5px solid var(--dsw-alias-border-l3)}.apxdsh-ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-dangerButton{background:transparent;color:var(--dsw-alias-state-error-primary);border:.5px solid var(--dsw-alias-border-l3)}.apxdsh-dangerButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.apxdsh-smallButton{height:26px;padding:0 10px;font-size:12px;border-radius:13px}.apxdsh-button:focus-visible,.apxdsh-summary:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}.apxdsh-toolList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto}.apxdsh-toolItem{display:flex;align-items:baseline;gap:10px;padding:5px 8px;border-radius:6px;min-width:0}.apxdsh-toolItem:hover{background:var(--dsw-alias-interactive-bg-hover)}.apxdsh-toolId{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-toolDesc{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apxdsh-searchForm{display:flex;gap:8px;min-width:0}.apxdsh-searchForm .apxdsh-input{flex:1 1 auto;min-width:0}.apxdsh-searchForm .apxdsh-button{flex:none}.apxdsh-results{display:flex;flex-direction:column;gap:8px;min-width:0}.apxdsh-result{display:flex;flex-direction:column;gap:4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;padding:10px 12px;min-width:0}.apxdsh-resultHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-resultName{font-weight:500;font-size:13px}.apxdsh-tag{border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:1px 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);font-family:var(--ds-font-family-code)}.apxdsh-score{margin-left:auto;font-family:var(--ds-font-family-code);font-size:11px;color:var(--dsw-alias-label-tertiary)}.apxdsh-resultDesc{margin:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}@media (max-width:480px){.apxdsh-serverCommand{max-width:160px}}@media (prefers-reduced-motion:reduce){.apxdsh-dotRunning{animation:none}.apxdsh-summary::before{transition:none}}.apxdsh-toolToggle{flex:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer}.apxdsh-toolItemDisabled .apxdsh-toolId,.apxdsh-toolItemDisabled .apxdsh-toolDesc{opacity:.45;text-decoration:line-through}.apxdsh-engineRow{display:flex;gap:8px;min-width:0}.apxdsh-engineRow .apxdsh-input{flex:1 1 auto}";
 		const tagId = "ai-plugin-toolkit-dsh/HubConsole.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -147,7 +147,15 @@ window.__ModuleLoader__.load({
 					env: typeof def.env === "object" && def.env !== null ? def.env : {}
 				};
 			}
-			return { servers };
+			return {
+				servers,
+				disabledTools: Array.isArray(value.disabledTools)
+					? value.disabledTools.filter((id) => typeof id === "string" && id.length > 0)
+					: [],
+				sidecar: value.search !== null && typeof value.search === "object" && typeof value.search.sidecar === "string"
+					? value.search.sidecar
+					: null
+			};
 		}
 		function normalizeTools(value) {
 			if (typeof value !== "object" || value === null || !Array.isArray(value.tools)) return null;
@@ -448,15 +456,38 @@ window.__ModuleLoader__.load({
 		* and the cap says so instead of silently hiding rows.
 		*/
 		function ToolsSection(props) {
-			const { data } = props;
+			const { data, onRefresh } = props;
 			const [filter, setFilter] = (0, react.useState)("");
+			const [toggleBusyId, setToggleBusyId] = (0, react.useState)(null);
+			const [toggleError, setToggleError] = (0, react.useState)(null);
+			const onToggleTool = async (id, disable) => {
+				setToggleBusyId(id);
+				setToggleError(null);
+				const answer = await bridgeRequest("/tools/toggle", { method: "POST", body: { id, disabled: disable } });
+				setToggleBusyId(null);
+				if (!answer.ok) {
+					setToggleError(answer.error);
+					return;
+				}
+				await onRefresh();
+			};
 			const tools = data.tools;
+			const disabledIds = data.config === null ? [] : data.config.disabledTools;
+			// 目录只含启用中的工具；已停用的从配置侧补进来，否则无法重新启用
+			const rows = tools === null
+				? []
+				: [
+					...tools.map((tool) => ({ ...tool, disabled: disabledIds.includes(tool.id) })),
+					...disabledIds
+						.filter((id) => !tools.some((tool) => tool.id === id))
+						.map((id) => ({ id, server: id.split("/")[0] ?? "", name: id, description: "已停用——不出现在模型可见目录中", disabled: true }))
+				];
 			const normalized = filter.trim().toLowerCase();
 			const filtered = tools === null
 				? []
 				: normalized.length === 0
-					? tools
-					: tools.filter((tool) => tool.id.toLowerCase().includes(normalized)
+					? rows
+					: rows.filter((tool) => tool.id.toLowerCase().includes(normalized)
 						|| tool.name.toLowerCase().includes(normalized)
 						|| tool.server.toLowerCase().includes(normalized)
 						|| tool.description.toLowerCase().includes(normalized));
@@ -480,18 +511,28 @@ window.__ModuleLoader__.load({
 								onChange: (event) => { setFilter(event.target.value); }
 							}),
 							(0, h)("p", { className: "apxdsh-muted" },
-								filtered.length === tools.length
-									? `${String(tools.length)} tools`
-									: `${String(filtered.length)} / ${String(tools.length)} tools`),
+								filtered.length === rows.length
+									? `${String(rows.length)} tools`
+									: `${String(filtered.length)} / ${String(rows.length)} tools`),
+							toggleError !== null ? (0, h)("p", { className: "apxdsh-error" }, `启停失败：${toggleError}`) : null,
 							filtered.length === 0
 								? (0, h)("p", { className: "apxdsh-empty" },
-									`没有匹配「${filter.trim()}」的工具——清空过滤框查看全部 ${String(tools.length)} 条。`)
+									`没有匹配「${filter.trim()}」的工具——清空过滤框查看全部 ${String(rows.length)} 条。`)
 								: (0, h)("ul", { className: "apxdsh-toolList" },
 									visible.map((tool) => (0, h)("li", {
-										className: "apxdsh-toolItem",
+										className: tool.disabled ? "apxdsh-toolItem apxdsh-toolItemDisabled" : "apxdsh-toolItem",
 										key: tool.id,
 										title: tool.description.length > 0 ? `${tool.id} — ${tool.description}` : tool.id
 									},
+										(0, h)("label", { className: "apxdsh-toolToggle", title: tool.disabled ? "已停用——勾选以重新启用" : "取消勾选可停用：模型将看不到该工具" },
+											(0, h)("input", {
+												type: "checkbox",
+												checked: !tool.disabled,
+												disabled: toggleBusyId !== null,
+												"aria-label": (tool.disabled ? "启用 " : "停用 ") + tool.id,
+												onChange: () => { void onToggleTool(tool.id, !tool.disabled); }
+											})
+										),
 										(0, h)("span", { className: "apxdsh-toolId" }, tool.id),
 										(0, h)("span", { className: "apxdsh-toolDesc" }, tool.description.length > 0 ? tool.description : "（无描述）")
 									)),
@@ -502,6 +543,68 @@ window.__ModuleLoader__.load({
 						)
 				)
 			);
+		}
+		//#endregion
+		//#region lib/client/EngineSection.js
+		/**
+		* Retrieval engine control: the hub ships with the built-in lexical index;
+		* a sidecar command (e.g. the zvec hybrid sidecar) upgrades mcp_search and
+		* falls back to lexical on any failure. Persisted as search.sidecar.
+		*/
+		function EngineSection(props) {
+			const { data, onRefresh } = props;
+			const configSidecar = data.config === null ? null : data.config.sidecar;
+			const [value, setValue] = (0, react.useState)("");
+			const [dirty, setDirty] = (0, react.useState)(false);
+			const [busy, setBusy] = (0, react.useState)(false);
+			const [error, setError] = (0, react.useState)(null);
+			const [saved, setSaved] = (0, react.useState)(null);
+			(0, react.useEffect)(() => {
+				if (!dirty) setValue(configSidecar ?? "");
+			}, [configSidecar, dirty]);
+			const save = async (sidecar) => {
+				setBusy(true);
+				setError(null);
+				setSaved(null);
+				const answer = await bridgeRequest("/settings", { method: "POST", body: { sidecar } });
+				setBusy(false);
+				if (!answer.ok) {
+					setError(answer.error);
+					return;
+				}
+				setDirty(false);
+				setSaved(sidecar === null ? "已恢复内置词法检索" : "检索引擎已更新");
+				await onRefresh();
+			};
+			return (0, h)("details", { className: "apxdsh-details" },
+				(0, h)("summary", { className: "apxdsh-summary" },
+					(0, h)("span", null, "Search engine"),
+					(0, h)("span", { className: "apxdsh-summaryMeta" },
+						configSidecar === null ? "lexical (built-in)" : "custom sidecar configured")),
+				(0, h)("div", { className: "apxdsh-detailsBody" },
+					(0, h)("p", { className: "apxdsh-intro" },
+						"默认内置词法检索，零依赖。填入 sidecar 命令（如 zvec 混合检索）后 mcp_search 自动升级；sidecar 失败时自动回退词法，服务不中断。"),
+					(0, h)("div", { className: "apxdsh-engineRow" },
+						(0, h)("input", {
+							className: "apxdsh-input",
+							value: value,
+							placeholder: "python3 /path/to/sidecar.py",
+							"aria-label": "Sidecar command",
+							onChange: (event) => { setValue(event.target.value); setDirty(true); }
+						}),
+						(0, h)("button", {
+							className: "apxdsh-button apxdsh-smallButton",
+							disabled: busy || !dirty,
+							onClick: () => { void save(value.trim() || null); }
+						}, "Save")),
+					(0, h)("div", { className: "apxdsh-formActions" },
+						(0, h)("button", {
+							className: "apxdsh-ghostButton apxdsh-smallButton",
+							disabled: busy || configSidecar === null,
+							onClick: () => { void save(null); }
+						}, "Use built-in lexical"),
+						saved !== null ? (0, h)("span", { className: "apxdsh-savedNotice" }, saved) : null,
+						error !== null ? (0, h)("span", { className: "apxdsh-error" }, error) : null)));
 		}
 		//#endregion
 		//#region lib/client/SearchSection.js
@@ -653,7 +756,8 @@ window.__ModuleLoader__.load({
 				bridgeReady
 					? (0, h)(react.Fragment, null,
 						(0, h)(ServersSection, { data: data, onRefresh: refresh }),
-						(0, h)(ToolsSection, { data: data }),
+						(0, h)(EngineSection, { data: data, onRefresh: refresh }),
+						(0, h)(ToolsSection, { data: data, onRefresh: refresh }),
 						(0, h)(SearchSection, null)
 					)
 					: null

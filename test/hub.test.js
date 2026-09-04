@@ -84,6 +84,80 @@ test('hub call routes to the downstream tool and returns its content', async () 
   }
 })
 
+// ---- disabledTools filtering (mock downstreams: no child processes) ----
+
+function makeMockHub({ disabledTools } = {}) {
+  const tools = {
+    fs: [
+      { name: 'read_text_file', description: 'Read the complete contents of a file' },
+      { name: 'write_text_file', description: 'Create or overwrite a text file' },
+    ],
+    redis: [{ name: 'get', description: 'Get a key from Redis' }],
+  }
+  return createHub({
+    servers: { fs: {}, redis: {} },
+    disabledTools,
+    downstreamFactory: (name) => ({
+      ready: true,
+      lastError: null,
+      listTools: async () => tools[name],
+      callTool: async (tool, args) => ({
+        content: [{ type: 'text', text: `${name}/${tool}:${args?.text ?? ''}` }],
+      }),
+      stop: () => {},
+    }),
+  })
+}
+
+test('hub disabledTools hides a tool from search/call and shrinks status counts', async () => {
+  const hub = makeMockHub({ disabledTools: ['fs/read_text_file'] })
+  try {
+    // refresh rows are raw discovery counts; the filtering shows up downstream
+    const rows = await hub.refresh()
+    assert.deepEqual(rows.map((r) => r.tools), [2, 1])
+
+    // search: the disabled id never ranks — its sibling is untouched
+    const hits = await hub.search('read_text_file', 5)
+    assert.ok(!hits.some((t) => t.id === 'fs/read_text_file'))
+    const keep = await hub.search('write_text_file', 5)
+    assert.equal(keep[0]?.id, 'fs/write_text_file')
+
+    // call: unknown even though the downstream itself still serves it
+    await assert.rejects(
+      () => hub.call('fs/read_text_file', { text: 'x' }),
+      /unknown tool "fs\/read_text_file"/
+    )
+    const r = await hub.call('redis/get', { text: 'ping' })
+    assert.equal(r.content[0].text, 'redis/get:ping')
+
+    // status: per-server counts reflect the filtering
+    assert.deepEqual(hub.status().map((s) => [s.name, s.tools]), [
+      ['fs', 1],
+      ['redis', 1],
+    ])
+  } finally {
+    await hub.stop()
+  }
+})
+
+test('hub disabledTools: an empty list is a zero-behavior-change no-op', async () => {
+  const hub = makeMockHub({ disabledTools: [] })
+  try {
+    const rows = await hub.refresh()
+    assert.deepEqual(rows.map((r) => r.tools), [2, 1])
+    const hits = await hub.search('read_text_file', 5)
+    assert.equal(hits[0]?.id, 'fs/read_text_file')
+    const r = await hub.call('fs/read_text_file', { text: 'x' })
+    assert.equal(r.content[0].text, 'fs/read_text_file:x')
+    assert.deepEqual(hub.status().map((s) => [s.name, s.tools]), [
+      ['fs', 2],
+      ['redis', 1],
+    ])
+  } finally {
+    await hub.stop()
+  }
+})
+
 // ---- stdio message handler ----
 
 test('message handler: initialize, tools/list, status, search, unknown', async () => {

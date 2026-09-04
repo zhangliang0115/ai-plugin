@@ -301,7 +301,17 @@ export async function main(argv) {
               logErr
             )
           }
-          const hub = createHub({ servers: config.servers, log: logErr, searchIndex })
+          const hub = createHub({
+            servers: config.servers,
+            log: logErr,
+            searchIndex,
+            // optional mcp-hub.json key: ["fs/read_text_file", …] — tools the
+            // console disabled; anything but a string array is ignored
+            disabledTools:
+              Array.isArray(config.disabledTools) && config.disabledTools.every((t) => typeof t === 'string')
+                ? config.disabledTools
+                : [],
+          })
           await serveStdio(hub, { log: logErr })
           return
         }
