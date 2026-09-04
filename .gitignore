@@ -19,3 +19,4 @@ dist/
 # aipx local test scratch
 /tmp/
 site/
+__pycache__/

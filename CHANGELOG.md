@@ -3,6 +3,24 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.5.1] — 2026-09-05
+
+### Added
+
+- **Prompt-cache stabilization for the hub** — the index builds from an
+  id-sorted catalog (config order no longer leaks into what the model sees),
+  unchanged catalogs skip rebuilds entirely (sidecar embed caches survive
+  `mcp_refresh`), and score ties break deterministically by id in every
+  engine. Reordered configs and repeated rebuilds now produce identical
+  model-visible result order.
+- **Console shows the live search engine** — the Search engine section reads
+  "serving: zvec-hybrid-local" (or "lexical" after a fallback), reported by
+  the sidecar through `mcp_status` (`{servers, searchEngine}`).
+- Registry: five gh-api-verified dsh-ecosystem entries + a dsh-ecosystem
+  collection; three first-party MCP servers (github, notion, supabase) + an
+  official-mcp-servers collection. 18 entries, all verified at submission.
+- Release notes are now extracted from this CHANGELOG into the release page.
+
 ## [0.5.0] — 2026-09-05
 
 ### Added
