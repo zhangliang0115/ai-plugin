@@ -154,8 +154,8 @@ Node.js ≥ 20 与 `tar`（macOS、Linux、Windows 10+ 均内置）。无需 `np
 - [x] v0.2 — 项目级安装、`aipx new` 脚手架、`aipx upgrade`、`aipx lint`
 - [x] v0.3 — MCP 配置同步、注册表校验 bot + 网站 + 安装冒烟
 - [x] v0.4 — **MCP 网关**（`mcp import` / `mcp serve`）、六技能工具包
-- [x] next — 网关向量检索契约 + 可插拔 SidecarIndex、registry collections（`aipx collection`）
-- [ ] then — zvec sidecar 接线（Python）、npm 发布、registry 扩充
+- [x] v0.5 — **hub 控制台**（dsh 设置页面板：服务器池、工具启停、搜索试验场）、四档检索引擎（零配置本地混合，评测 8/20→14/20）、prompt-cache 稳定化、`aipx doctor` hub 健康段、registry 扩至 24 条全核验
+- [ ] then — npm 发布（待 NPM_TOKEN）、Homebrew tap、技能分析钩子（可选）
 
 详见 [ROADMAP.md](ROADMAP.md) 与 [CHANGELOG.md](CHANGELOG.md)。
 
