@@ -73,7 +73,15 @@ function normalizeServerDef(def) {
       env,
     }
   }
-  if (typeof def.url === 'string' && def.url !== '') return { url: def.url }
+  if (typeof def.url === 'string' && def.url !== '') {
+    const out = { url: def.url }
+    if (def.headers && typeof def.headers === 'object') {
+      const headers = {}
+      for (const [k, v] of Object.entries(def.headers)) headers[String(k)] = String(v)
+      out.headers = headers
+    }
+    return out
+  }
   throw invalid('server definition needs a non-empty "command" (stdio) or "url" (http)')
 }
 

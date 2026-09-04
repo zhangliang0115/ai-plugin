@@ -81,6 +81,16 @@ test('hub bridge: status, tools, search, config add/remove against a real aipx m
         `restarted hub should serve mini2: ${JSON.stringify(st2.servers)}`
       )
 
+      // url + headers defs persist as-is (console Headers field support)
+      const cfgUrl = await bridge.setServer('add', 'demo-http', {
+        url: 'http://127.0.0.1:9/mcp',
+        headers: { Authorization: 'Bearer test123' },
+      })
+      assert.deepEqual(cfgUrl.servers['demo-http'].headers, { Authorization: 'Bearer test123' })
+      const rawUrl = JSON.parse(await readFile(configPath, 'utf8'))
+      assert.equal(rawUrl.servers['demo-http'].headers.Authorization, 'Bearer test123')
+      await bridge.setServer('remove', 'demo-http')
+
       // remove: gone from file; removing again is a 400-grade caller error
       const cfg2 = await bridge.setServer('remove', 'mini2')
       assert.equal(cfg2.servers.mini2, undefined)
