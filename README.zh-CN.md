@@ -81,6 +81,11 @@ top-1 从 8/20 提升至 14/20，中文 0/10 → 9/10）→ 远程 embedding 混
 dsh 用户还可以在 **设置 → Plugins → Hub Console** 面板里管理服务器池、启停
 单个工具、浏览工具目录，并用搜索试验场预览模型视角的检索结果。
 
+<p align="center">
+  <img src="docs/assets/hub-console.png" width="420" alt="Hub Console — 服务器池、工具启停、工具目录" />
+  <img src="docs/assets/hub-console-playground.png" width="420" alt="搜索试验场 —— 中文查询的 mcp_search 返回" />
+</p>
+
 示例：
 
 ```console

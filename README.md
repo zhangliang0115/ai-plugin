@@ -137,6 +137,11 @@ catalog with filtering, and a search playground that shows exactly what
 `mcp_search` would hand the model — type 中文, see which tools surface.
 Tui profiles skip the console; skills work everywhere.
 
+<p align="center">
+  <img src="docs/assets/hub-console.png" width="420" alt="Hub Console — server pool, per-tool toggles, tool catalog" />
+  <img src="docs/assets/hub-console-playground.png" width="420" alt="Search playground — what mcp_search returns for a Chinese query" />
+</p>
+
 ## What's bundled (the toolkit)
 
 This repo is itself a plugin payload — use it three ways:
