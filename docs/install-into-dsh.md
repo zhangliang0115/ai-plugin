@@ -89,6 +89,17 @@ allowBuilds:
 your machine; pin a commit (`github:owner/repo#<sha>`) for safety. Authors:
 ship plain JS with no build step and users never see this.
 
+Network catch: pnpm resolves `github:` deps over git, which defaults to SSH
+on some setups — on networks where port 22 is blocked the install dies with
+`ssh: connect to host github.com port 22`. A local clone sidesteps the
+network entirely:
+
+```sh
+git clone https://github.com/zhangliang0115/ai-plugin
+dsh plugin --profile web add "$PWD/ai-plugin/dsh-plugin"
+# link:-installed — edits to the working copy apply on next dsh boot
+```
+
 Inspect the composed tree without booting:
 
 ```sh
