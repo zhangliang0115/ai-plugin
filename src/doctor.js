@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
 import { constants as fsConstants } from 'node:fs'
 import { access, mkdir, mkdtemp, symlink, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -131,6 +131,34 @@ export async function doctor() {
     const line = r.pass ? ok : warn
     line(`${name}${r.detail ? c.dim(` — ${r.detail}`) : ''}`)
     if (!r.pass && r.fix) console.log(`      fix: ${r.fix}`)
+  }
+
+  console.log(`\nmcp hub:`)
+  try {
+    const { loadHubConfig } = await import('./hub/config.js')
+    const config = await loadHubConfig()
+    const serverCount = Object.keys(config.servers ?? {}).length
+    if (serverCount > 0) {
+      ok(`config: ${serverCount} server(s) registered`)
+    } else {
+      info('config: no servers registered — `aipx mcp import` pulls in every server your agents already have')
+    }
+    const sidecar = typeof config.search?.sidecar === 'string' && config.search.sidecar.length > 0
+      ? config.search.sidecar
+      : null
+    if (sidecar) {
+      ok(`search sidecar: ${sidecar}`)
+    } else {
+      info('search: built-in lexical — `aipx mcp serve --sidecar "python3 …/sidecars/zvec_sidecar.py"` upgrades to zvec hybrid')
+    }
+    const zvec = spawnSync('python3', ['-c', 'import zvec'], { timeout: 15000 })
+    if (zvec.status === 0) {
+      ok('zvec available (hybrid search engines ready)')
+    } else {
+      info('zvec not importable — search stays lexical unless a remote embeddings endpoint is set')
+    }
+  } catch {
+    warn('mcp hub config unreadable')
   }
 
   console.log(`\nagents detected:`)
