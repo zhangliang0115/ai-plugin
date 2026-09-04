@@ -217,6 +217,53 @@
         "supabase",
         "postgres"
       ]
+    },
+    {
+      "name": "archify",
+      "repo": "tt-a1i/archify",
+      "kind": "skills",
+      "description": "Agent skill for beautiful, verifiable architecture, workflow, sequence, data-flow and lifecycle diagrams — self-contained HTML with motion and crisp export.",
+      "topics": [
+        "agent-skills",
+        "diagrams",
+        "architecture",
+        "dsh-plugin"
+      ],
+      "install": "aipx install tt-a1i/archify#path:/archify"
+    },
+    {
+      "name": "ruflo",
+      "repo": "ruvnet/ruflo",
+      "kind": "app",
+      "description": "The original agent meta-harness: multi-player swarms, autonomous workflow coordination, adaptive memory and RAG — native Claude Code / Codex / DeepSeek Harness integration.",
+      "topics": [
+        "agent-harness",
+        "swarms",
+        "dsh-plugin"
+      ]
+    },
+    {
+      "name": "openviking",
+      "repo": "volcengine/OpenViking",
+      "kind": "app",
+      "description": "Self-evolving context database for AI agents by volcengine — unifies agent memory, knowledge RAG and skills.",
+      "topics": [
+        "agent-memory",
+        "rag",
+        "skills",
+        "dsh-plugin"
+      ]
+    },
+    {
+      "name": "deepseek-reasonix",
+      "repo": "esengine/DeepSeek-Reasonix",
+      "kind": "app",
+      "description": "DeepSeek-native AI coding agent for your terminal, engineered around prefix-cache stability.",
+      "topics": [
+        "deepseek",
+        "coding-agent",
+        "terminal"
+      ]
     }
   ],
   "collections": [
