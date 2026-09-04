@@ -1,8 +1,12 @@
 import { readFile, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { HubBridge } from './lib/hub-bridge.js'
 
 export const name = 'ai-plugin-toolkit'
+// `webserver` is provided by dsh-web-app only; on tui/headless profiles the
+// plugin still loads — a missing injected service just throws on access,
+// which startHubBridge treats as "no console here".
 export const inject = ['skills']
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -116,6 +120,136 @@ export function apply(ctx) {
     return () => {
       disposed = true
       for (const dispose of disposers) dispose?.()
+    }
+  })
+
+  startHubBridge(ctx)
+}
+
+// ---------------------------------------------------------------------------
+// aipx MCP hub bridge — HTTP routes backing the aipx hub console (web GUI only)
+// ---------------------------------------------------------------------------
+
+/**
+ * The management surface of the running aipx MCP hub, all same-origin JSON.
+ * `dsh-host-webserver` binds loopback by default and dispatches routes
+ * without regard to method, so each entry owns its method check.
+ */
+const HUB_ROUTES = [
+  { method: 'GET', path: '/aipx-hub/status', handle: (bridge) => bridge.status() },
+  { method: 'GET', path: '/aipx-hub/tools', handle: (bridge, body, query) => bridge.tools(query.limit) },
+  { method: 'POST', path: '/aipx-hub/search', handle: (bridge, body) => bridge.search(body.query ?? '', body.limit) },
+  { method: 'GET', path: '/aipx-hub/config', handle: (bridge) => bridge.getConfig() },
+  {
+    method: 'POST',
+    path: '/aipx-hub/servers',
+    handle: (bridge, body) => bridge.setServer(body.action, body.name, body.def),
+  },
+]
+
+const HUB_BODY_CAP = 1 << 20 // server definitions are tiny; the cap is abuse guard
+
+function sendJson(res, status, value) {
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+  })
+  res.end(JSON.stringify(value))
+}
+
+async function readJsonBody(req) {
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    size += chunk.length
+    if (size > HUB_BODY_CAP) {
+      const e = new Error('request body too large')
+      e.status = 413
+      throw e
+    }
+    chunks.push(chunk)
+  }
+  if (chunks.length === 0) return {}
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  } catch {
+    const e = new Error('request body is not valid JSON')
+    e.status = 400
+    throw e
+  }
+}
+
+/**
+ * Adapt one HUB_ROUTES entry to a `WebRoute` handler: the webserver hands over
+ * the raw node:http pair and does not dispatch on method. Every failure —
+ * including validation errors carrying `status` from the bridge — becomes a
+ * JSON error body; an escaping throw would be flattened to a bare 400 by the
+ * webserver.
+ */
+function makeHubHandler(bridge, route) {
+  return async (req, res) => {
+    if (req.method !== route.method) {
+      res.writeHead(405, { allow: route.method, 'content-type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: `use ${route.method} ${route.path}` }))
+      return
+    }
+    try {
+      const body = route.method === 'POST' ? await readJsonBody(req) : {}
+      const query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
+      sendJson(res, 200, await route.handle(bridge, body, query))
+    } catch (e) {
+      sendJson(res, typeof e?.status === 'number' ? e.status : 500, { error: String(e?.message ?? e) })
+    }
+  }
+}
+
+/**
+ * Register the hub routes when (and only when) this profile runs a web
+ * server. `ctx.webServer` is an optional Cordis service: on profiles without
+ * it (tui, headless) the property read itself throws, so the access is
+ * wrapped — the skill registration above must not depend on this succeeding.
+ */
+function startHubBridge(ctx) {
+  // The webServer service (dsh-web-app) can provide after this plugin's
+  // apply(), and tui/headless profiles never provide it — so the lookup is
+  // unguarded (ctx.reflect.get returns undefined instead of throwing) and
+  // retried briefly against boot-order races. Skills never depend on this.
+  const attempt = () => {
+    let webServer
+    try {
+      webServer = ctx.reflect?.get?.('webServer') ?? ctx.webServer
+    } catch {
+      return false // no webserver in this profile at all
+    }
+    if (!webServer || typeof webServer.register !== 'function') return false
+    registerHubRoutes(ctx, webServer)
+    return true
+  }
+  if (attempt()) return
+  let tries = 0
+  const timer = setInterval(() => {
+    if (attempt() || ++tries >= 60) clearInterval(timer)
+  }, 500)
+}
+
+function registerHubRoutes(ctx, webServer) {
+
+  const bridge = new HubBridge({ log: (msg) => ctx.logger.info('aipx-hub: %s', msg) })
+  const disposers = []
+
+  ctx.effect(() => {
+    for (const route of HUB_ROUTES) {
+      try {
+        disposers.push(webServer.register({ kind: 'exact', path: route.path, handler: makeHubHandler(bridge, route) }))
+      } catch (e) {
+        // a duplicate path is another plugin's claim — degrade to a warning
+        ctx.logger.warn('aipx-hub: failed to register %s: %o', route.path, e)
+      }
+    }
+    return () => {
+      for (const dispose of disposers) dispose?.()
+      disposers.length = 0
+      void bridge.stop()
     }
   })
 }
