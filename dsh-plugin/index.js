@@ -17,6 +17,8 @@ const SKILL_DIRS = [
   'skills/dsh-plugin-dev',
   'skills/claude-plugin-dev',
   'skills/deepseek-cost-router',
+  'skills/deepseek-migration',
+  'skills/skill-portability-audit',
 ]
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
