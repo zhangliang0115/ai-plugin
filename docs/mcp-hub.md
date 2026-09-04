@@ -39,11 +39,15 @@ Real session against three official stdio servers
 
 ```console
 → tools/call mcp_status
-← [
-     { "name": "filesystem", "ready": true, "tools": 14 },
-     { "name": "memory",     "ready": true, "tools": 9  },
-     { "name": "thinking",   "ready": true, "tools": 1  }
-   ]   ← 24 downstream tools aggregated; the model saw 4 definitions
+← {
+     "servers": [
+       { "name": "filesystem", "ready": true, "tools": 14 },
+       { "name": "memory",     "ready": true, "tools": 9  },
+       { "name": "thinking",   "ready": true, "tools": 1  }
+     ],
+     "searchEngine": "zvec-hybrid-local"
+   }   ← 24 downstream tools aggregated; the model saw 4 definitions.
+           searchEngine reports which index actually served the build.
 
 → tools/call mcp_search {"query": "read file"}
 ← ["filesystem/read_file", "filesystem/read_text_file"]

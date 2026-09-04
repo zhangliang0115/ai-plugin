@@ -182,6 +182,8 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 - [Install into Claude Code](docs/install-into-claude-code.md) — marketplaces & plugins
 - [MCP config sync](docs/mcp-sync.md) — 简体中文版：[docs/mcp-sync.zh-CN.md](docs/mcp-sync.zh-CN.md)
 - [Publish once, target every agent](docs/publish-dual-target.md) — the dual-target repo layout
+- [Quick actions in dsh](docs/dsh-quick-actions.md) — dsh-native custom prompts and what we deliberately don't rebuild
+- [MCP ecosystem](docs/mcp-ecosystem.md) — use/reference/build decisions for MCP managers
 - [Troubleshooting](docs/troubleshooting.md) — common failures and fixes
 
 ## Requirements
