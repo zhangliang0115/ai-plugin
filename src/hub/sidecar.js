@@ -86,6 +86,9 @@ export class SidecarIndex {
       { op: 'build', entries: entries.map((e) => ({ id: e.id, text: e.text })) },
       this.buildTimeoutMs
     )
+    // e.g. "zvec" | "zvec-hybrid-local" | "tf" — the hub surfaces this via
+    // mcp_status so operators can see which engine is actually serving
+    this.engine = result?.engine ?? null
     return result
   }
 

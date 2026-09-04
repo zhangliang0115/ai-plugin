@@ -110,16 +110,19 @@ export class HubBridge {
   async status() {
     const child = await this._ensure()
     const text = await this._callTool('mcp_status')
-    const list = parseJsonReply(text, 'status')
-    // mcp_status returns a rows array; the console contract is a name-keyed map
+    const payload = parseJsonReply(text, 'status')
+    // mcp_status returns {servers: [...rows], searchEngine}; older builds sent
+    // a bare rows array — both read as a name-keyed map for the console
+    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.servers) ? payload.servers : []
     const servers = {}
-    for (const entry of Array.isArray(list) ? list : []) {
+    for (const entry of list) {
       if (typeof entry !== 'object' || entry === null || typeof entry.name !== 'string') continue
       servers[entry.name] = entry.ready === true
         ? { status: 'ok', tools: typeof entry.tools === 'number' ? entry.tools : 0 }
         : { status: 'error', error: String(entry.lastError ?? 'unknown error') }
     }
-    return { running: true, pid: child.pid, servers }
+    const engine = !Array.isArray(payload) && typeof payload?.searchEngine === 'string' ? payload.searchEngine : null
+    return { running: true, pid: child.pid, servers, engine }
   }
 
   /**

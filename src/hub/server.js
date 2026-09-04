@@ -86,7 +86,7 @@ export function createMessageHandler(hub, log = () => {}) {
             const r = await hub.call(args.tool, args.arguments)
             result = r ?? { content: [{ type: 'text', text: 'done' }] }
           } else if (name === 'mcp_status') {
-            result = { content: [{ type: 'text', text: JSON.stringify(hub.status(), null, 2) }] }
+            result = { content: [{ type: 'text', text: JSON.stringify({ servers: hub.status(), searchEngine: hub.searchEngine() }, null, 2) }] }
           } else if (name === 'mcp_refresh') {
             const rows = await hub.refresh()
             result = { content: [{ type: 'text', text: JSON.stringify(rows, null, 2) }] }

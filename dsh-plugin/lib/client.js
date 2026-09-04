@@ -131,7 +131,12 @@ window.__ModuleLoader__.load({
 			return {
 				running: value.running === true,
 				pid: typeof value.pid === "number" ? value.pid : null,
-				servers
+				servers,
+				searchEngine: typeof value.engine === "string"
+					? value.engine
+					: typeof value.searchEngine === "string"
+						? value.searchEngine
+						: null
 			};
 		}
 		function normalizeConfig(value) {
@@ -554,6 +559,7 @@ window.__ModuleLoader__.load({
 		function EngineSection(props) {
 			const { data, onRefresh } = props;
 			const configSidecar = data.config === null ? null : data.config.sidecar;
+			const serving = data.status === null ? null : data.status.searchEngine ?? null;
 			const [value, setValue] = (0, react.useState)("");
 			const [dirty, setDirty] = (0, react.useState)(false);
 			const [busy, setBusy] = (0, react.useState)(false);
@@ -580,7 +586,11 @@ window.__ModuleLoader__.load({
 				(0, h)("summary", { className: "apxdsh-summary" },
 					(0, h)("span", null, "Search engine"),
 					(0, h)("span", { className: "apxdsh-summaryMeta" },
-						configSidecar === null ? "lexical (built-in)" : "custom sidecar configured")),
+						serving !== null
+							? `serving: ${serving}`
+							: configSidecar === null
+								? "lexical (built-in)"
+								: "custom sidecar configured")),
 				(0, h)("div", { className: "apxdsh-detailsBody" },
 					(0, h)("p", { className: "apxdsh-intro" },
 						"默认内置词法检索，零依赖。填入 sidecar 命令（如 zvec 混合检索）后 mcp_search 自动升级；sidecar 失败时自动回退词法，服务不中断。"),

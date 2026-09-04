@@ -44,6 +44,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
   let entriesById = new Map() // toolKey -> { server, name, description, inputSchema }
   let refreshed = false
   let lastCatalogSignature = null
+  let engineName = 'lexical'
 
   async function refresh() {
     // build a fresh entry map, then swap — concurrent searches never see a
@@ -88,7 +89,13 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     // score ties, both of which show up as jitter for the model.
     const signature = catalog.map((e) => `${e.id}\u0000${e.text}`).join('\u0001')
     if (signature !== lastCatalogSignature) {
-      await index.build(catalog)
+      const built = await index.build(catalog)
+      // sidecar indexes report the engine that actually built this catalog
+      // ("zvec", "zvec-hybrid-local", …); the built-in lexical index reports
+      // nothing, which reads as "lexical"
+      engineName = built && typeof built === 'object' && typeof built.engine === 'string'
+        ? built.engine
+        : 'lexical'
       lastCatalogSignature = signature
     }
     entriesById = next
@@ -143,5 +150,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     for (const d of downstreams.values()) d.stop()
   }
 
-  return { refresh, search, call, catalog, status, stop }
+  // the engine that served the last build — surfaced via mcp_status
+  const searchEngine = () => engineName
+  return { refresh, search, call, catalog, status, searchEngine, stop }
 }

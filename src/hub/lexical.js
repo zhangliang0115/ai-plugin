@@ -55,7 +55,8 @@ export function withLexicalFallback(primaryFactory, makeLexical, log = () => {})
       if (degraded) return lexicalIndex().build(entries)
       try {
         primary = primary ? primary : primaryFactory()
-        await primary.build(entries)
+        const result = await primary.build(entries)
+        return result // engine report flows through to the hub
       } catch (e) {
         degraded = true
         try {
