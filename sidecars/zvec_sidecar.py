@@ -96,7 +96,8 @@ class TfEngine:
                     score += (1 + math.log(tf[t])) * self.idf.get(t, 1.0)
             if score > 0:
                 scored.append({"id": doc_id, "score": round(score, 4)})
-        scored.sort(key=lambda x: -x["score"])
+        # deterministic tie-break keeps search output stable across rebuilds
+        scored.sort(key=lambda x: (-x["score"], x["id"]))
         return scored[: max(limit, 0)]
 
 
@@ -252,10 +253,13 @@ class ZvecEngine:
                 self._log(f"zvec hybrid query failed, FTS only: {exc}")
         if result is None:
             result = self._collection.query(queries=fts_query, topk=topk)
-        return [
+        rows = [
             {"id": self._ids.get(d.id, d.id), "score": round(float(d.score), 4)}
             for d in result
         ]
+        # deterministic tie-break: same scores keep id order across rebuilds
+        rows.sort(key=lambda x: (-x["score"], x["id"]))
+        return rows
 
 
 def make_engine():

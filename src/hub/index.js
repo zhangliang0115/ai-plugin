@@ -43,6 +43,7 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
   const factory = downstreamFactory ?? makeDefault
   let entriesById = new Map() // toolKey -> { server, name, description, inputSchema }
   let refreshed = false
+  let lastCatalogSignature = null
 
   async function refresh() {
     // build a fresh entry map, then swap — concurrent searches never see a
@@ -73,13 +74,24 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     // filter disabled ids out after the catalog is built and before the index
     // sees it — one deletion point covers search, call, and status
     for (const id of disabled) next.delete(id)
+
+    // Prompt-cache stabilization: build the index from a canonically ordered
+    // catalog (id order, not config/server enumeration order) so an identical
+    // tool set always produces an identical index — and identical search
+    // results — no matter how the config was written or reshuffled.
+    const catalog = [...next.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([id, t]) => ({ id, text: `${t.server} ${t.name} ${t.description}` }))
+
+    // Same catalog as the last refresh → keep the current index. Rebuilding
+    // an unchanged catalog would only churn sidecar embed caches and reorder
+    // score ties, both of which show up as jitter for the model.
+    const signature = catalog.map((e) => `${e.id}\u0000${e.text}`).join('\u0001')
+    if (signature !== lastCatalogSignature) {
+      await index.build(catalog)
+      lastCatalogSignature = signature
+    }
     entriesById = next
-    await index.build(
-      [...entriesById.entries()].map(([id, t]) => ({
-        id,
-        text: `${t.server} ${t.name} ${t.description}`,
-      }))
-    )
     refreshed = true
     return results
   }

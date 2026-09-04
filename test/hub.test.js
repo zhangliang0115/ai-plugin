@@ -160,6 +160,82 @@ test('hub disabledTools: an empty list is a zero-behavior-change no-op', async (
 
 // ---- stdio message handler ----
 
+// ---- prompt-cache stabilization: deterministic catalog, no-op rebuilds ----
+
+test('hub builds the index from a canonically ordered catalog regardless of server order', async () => {
+  const make = (order) => {
+    const builds = []
+    const hub = createHub({
+      servers: Object.fromEntries(order.map((name) => [name, { command: 'stub' }])),
+      downstreamFactory: (name) => ({
+        ready: true,
+        stop() {},
+        async listTools() {
+          return name === 'zz'
+            ? [{ name: 'run', description: 'run a job' }]
+            : [{ name: 'list', description: 'list items' }, { name: 'get', description: 'get one item' }]
+        },
+        async callTool() { return { ok: true } },
+      }),
+      searchIndex: {
+        async build(entries) { builds.push(entries.map((e) => e.id)) },
+        async search() { return [] },
+      },
+    })
+    return { hub, builds }
+  }
+
+  const a = make(['alpha', 'zz'])
+  await a.hub.refresh()
+  const b = make(['zz', 'alpha'])
+  await b.hub.refresh()
+
+  // server declaration order must not leak into the model-visible catalog
+  assert.deepEqual(b.builds[0], a.builds[0])
+  assert.deepEqual(a.builds[0], ['alpha/get', 'alpha/list', 'zz/run'])
+})
+
+test('an unchanged refresh skips the index rebuild (prompt-cache stable)', async () => {
+  let buildCount = 0
+  let lists = 0
+  const hub = createHub({
+    servers: { fs: { command: 'stub' } },
+    downstreamFactory: () => ({
+      ready: true,
+      stop() {},
+      async listTools() {
+        lists += 1
+        return [{ name: 'read', description: 'read a file' }]
+      },
+      async callTool() { return { ok: true } },
+    }),
+    searchIndex: {
+      async build() { buildCount += 1 },
+      async search() { return [] },
+    },
+  })
+  await hub.refresh()
+  assert.equal(buildCount, 1)
+  await hub.refresh()
+  await hub.refresh()
+  // downstreams were re-listed (fresh data), but the identical catalog never
+  // reaches the index again — no churn for caches or ranking ties
+  assert.equal(lists, 3)
+  assert.equal(buildCount, 1)
+})
+
+test('LexicalIndex breaks score ties deterministically by id', async () => {
+  const idx = new LexicalIndex()
+  await idx.build([
+    { id: 'zeta/tool', text: 'zeta tool does a thing' },
+    { id: 'alpha/tool', text: 'alpha tool does a thing' },
+  ])
+  const r = await idx.search('tool does a thing', 5)
+  // identical scores → id order, stable across rebuilds
+  assert.deepEqual(r.map((x) => x.id), ['alpha/tool', 'zeta/tool'])
+  assert.equal(r[0].score, r[1].score)
+})
+
 test('message handler: initialize, tools/list, status, search, unknown', async () => {
   const hub = makeHub()
   await hub.refresh()

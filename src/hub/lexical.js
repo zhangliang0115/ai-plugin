@@ -27,7 +27,9 @@ export class LexicalIndex {
       }
       if (score > 0) scored.push({ id: e.id, score })
     }
-    scored.sort((a, b) => b.score - a.score)
+    // deterministic tie-break: equal scores keep id order across rebuilds,
+    // so the model sees a stable catalog even when scores tie
+    scored.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     return scored.slice(0, limit)
   }
 }
