@@ -264,6 +264,29 @@
         "coding-agent",
         "terminal"
       ]
+    },
+    {
+      "name": "distilly",
+      "repo": "titanwings/distilly",
+      "kind": "app",
+      "description": "Distill how someone thinks into reusable Skills for any agent or bot — skill distillation with review workflow and multi-agent packaging.",
+      "topics": [
+        "agent-skills",
+        "skills",
+        "dsh-plugin"
+      ]
+    },
+    {
+      "name": "cherry-studio",
+      "repo": "CherryHQ/cherry-studio",
+      "kind": "app",
+      "description": "AI productivity studio with smart chat, autonomous agents and 300+ assistants — unified access to frontier LLMs, with agent-skills and dsh integration.",
+      "topics": [
+        "agent-skills",
+        "ai-agent",
+        "deepseek",
+        "dsh-plugin"
+      ]
     }
   ],
   "collections": [
