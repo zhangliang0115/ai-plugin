@@ -967,14 +967,41 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		function PromptOptimizeDock() {
 			const [phase, setPhase] = (0, react.useState)("idle");
 			const [note, setNote] = (0, react.useState)(null);
+			// 当前会话可见的 composer 输入框：页面里有多个 textarea/contenteditable
+			// （响应式重复面板、hero 变体等），只有视口内可见且属于活跃会话视图的
+			// 那个才是用户正在打字的地方。
+			const findComposer = () => {
+				const candidates = [...document.querySelectorAll('textarea, [contenteditable="true"]')]
+					.filter((el) => {
+						const r = el.getBoundingClientRect();
+						if (r.width < 80 || r.height < 24) return false;
+						const style = getComputedStyle(el);
+						if (style.visibility === "hidden" || style.display === "none") return false;
+						// 视口下半部（composer 固定在底部；hero 居中也在中部以下）
+						return r.top > window.innerHeight * 0.25;
+					});
+				// 可见者优先；没有可见的（窗口极小）就取最后一个（DOM 顺序上靠后的是活跃 composer）
+				return candidates.find((el) => el.offsetParent !== null) ?? candidates[candidates.length - 1] ?? null;
+			};
+			const writeComposer = (composer, text) => {
+				if (composer.tagName === "TEXTAREA" || composer.tagName === "INPUT") {
+					const proto = Object.getPrototypeOf(composer);
+					Object.getOwnPropertyDescriptor(proto, "value").set.call(composer, text);
+					composer.dispatchEvent(new Event("input", { bubbles: true }));
+				} else {
+					composer.focus();
+					composer.textContent = text;
+					composer.dispatchEvent(new Event("input", { bubbles: true }));
+					// contenteditable 常由框架代理——补一个 beforeinput/afterinput 对
+					composer.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, inputType: "insertText", data: text }));
+				}
+			};
 			const optimize = async () => {
-				const composer =
-					document.querySelector('.apxdsh-composerTarget') ??
-					document.querySelector('textarea[placeholder*="Message"], textarea[placeholder*="任务"], [contenteditable="true"][data-placeholder], form [contenteditable="true"]');
+				const composer = findComposer();
 				const draft = composer ? (composer.value ?? composer.textContent ?? '').trim() : '';
 				if (draft.length === 0) {
 					setPhase("error");
-					setNote("输入框是空的——先写下你的想法，再点优化。");
+					setNote(composer ? "输入框是空的——先写下你的想法，再点优化。" : "未找到输入框——先回到聊天视图再试。");
 					return;
 				}
 				setPhase("busy");
@@ -987,14 +1014,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					});
 					const data = await r.json();
 					if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
-					const proto = Object.getPrototypeOf(composer);
-					if (composer.tagName === "TEXTAREA" || composer.tagName === "INPUT") {
-						Object.getOwnPropertyDescriptor(proto, "value").set.call(composer, data.text);
-						composer.dispatchEvent(new Event("input", { bubbles: true }));
-					} else {
-						composer.textContent = data.text;
-						composer.dispatchEvent(new Event("input", { bubbles: true }));
-					}
+					writeComposer(composer, data.text);
 					setPhase("done");
 					setNote("已用优化后的提示词替换输入框内容。");
 				} catch (e) {
