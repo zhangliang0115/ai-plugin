@@ -37,10 +37,10 @@ test('install --project writes official project roots without agent detection', 
   const payload = await makePayload()
 
   const res = await install(payload, { project })
-  // dsh + codex share .agents/skills → 4 unique roots
-  assert.equal(res.installed, 4)
+  // dsh + codex + openclaw share .agents/skills → 5 unique roots
+  assert.equal(res.installed, 5)
 
-  for (const rel of ['.claude/skills', '.agents/skills', '.gemini/skills', '.github/skills']) {
+  for (const rel of ['.claude/skills', '.agents/skills', '.gemini/skills', '.github/skills', '.opencode/skills']) {
     await access(path.join(project, rel, 'demo-skill', 'SKILL.md'), constants.F_OK)
   }
 
