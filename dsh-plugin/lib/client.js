@@ -959,6 +959,66 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			);
 		}
 		//#endregion
+		//#region lib/client/PromptOptimizeDock.js
+		/**
+		* ✦ 优化提示词 —— composer 卡片正下方的 dock 条目。点击后读取输入框
+		* 草稿，经 /aipx-hub/optimize（DeepSeek 改写）替换回输入框。
+		*/
+		function PromptOptimizeDock() {
+			const [phase, setPhase] = (0, react.useState)("idle");
+			const [note, setNote] = (0, react.useState)(null);
+			const optimize = async () => {
+				const composer =
+					document.querySelector('.apxdsh-composerTarget') ??
+					document.querySelector('textarea[placeholder*="Message"], textarea[placeholder*="任务"], [contenteditable="true"][data-placeholder], form [contenteditable="true"]');
+				const draft = composer ? (composer.value ?? composer.textContent ?? '').trim() : '';
+				if (draft.length === 0) {
+					setPhase("error");
+					setNote("输入框是空的——先写下你的想法，再点优化。");
+					return;
+				}
+				setPhase("busy");
+				setNote("优化中…");
+				try {
+					const r = await fetch("/aipx-hub/optimize", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ text: draft })
+					});
+					const data = await r.json();
+					if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
+					const proto = Object.getPrototypeOf(composer);
+					if (composer.tagName === "TEXTAREA" || composer.tagName === "INPUT") {
+						Object.getOwnPropertyDescriptor(proto, "value").set.call(composer, data.text);
+						composer.dispatchEvent(new Event("input", { bubbles: true }));
+					} else {
+						composer.textContent = data.text;
+						composer.dispatchEvent(new Event("input", { bubbles: true }));
+					}
+					setPhase("done");
+					setNote("已用优化后的提示词替换输入框内容。");
+				} catch (e) {
+					setPhase("error");
+					setNote(`优化失败：${e.message}`);
+				}
+			};
+			return (0, h)("div", { className: "apxdsh-dock", role: "status" },
+				(0, h)("button", {
+					className: "apxdsh-dockButton" + (phase === "busy" ? " apxdsh-dockBusy" : ""),
+					onClick: () => { void optimize(); },
+					disabled: phase === "busy",
+					title: "把输入框内容改写为结构化提示词"
+				}, "✦ 优化提示词"),
+				note !== null ? (0, h)("span", {
+					className:
+						phase === "error" ? "apxdsh-error"
+						: phase === "done" ? "apxdsh-savedNotice"
+						: "apxdsh-muted",
+					role: "status"
+				}, note) : null
+			);
+		}
+		//#endregion
 		//#region lib/client/index.js
 		/**
 		* The only client service this module touches is the slot ledger; everything
@@ -982,6 +1042,11 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				order: 50,
 				label: "Hub Console"
 			}, HubConsole));
+			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
+				name: "conversation.composer.dock",
+				id: "aipx-prompt-optimize",
+				order: 0
+			}, PromptOptimizeDock));
 		}
 		//#endregion
 		exports.apply = apply;

@@ -124,6 +124,53 @@ export function apply(ctx) {
   })
 
   startHubBridge(ctx)
+
+  // /prompt-optimize —— 聊天窗快捷命令：把一句模糊需求改写成结构化提示词。
+  // 走官方 commands 注入（服务缺失时静默跳过，不影响技能注册）。
+  try {
+    ctx.inject(['commands'], (commandCtx) => {
+      commandCtx.commands.register({
+        name: 'prompt-optimize',
+        description: '把一句模糊的需求改写成结构化提示词（只改写，不执行）',
+        input: { hint: '<你的原始需求>' },
+        handler(invocation) {
+          const raw = String(invocation.rawInput ?? '').trim()
+          if (raw.length === 0) {
+            return { kind: 'error', text: '用法：/prompt-optimize <原始需求>，例如 /prompt-optimize 帮我写个爬虫' }
+          }
+          const composed = [
+            '请把下面的「原始需求」改写成一个高质量提示词。要求：',
+            '1. 明确目标与预期产出物；',
+            '2. 补全必要上下文与约束，不确定之处以「假设：…」列出；',
+            '3. 按 目标 / 背景 / 要求 / 产出格式 分节，输出可直接复制使用；',
+            '4. 只输出改写后的提示词，不要执行这个需求。',
+            '',
+            `原始需求：${raw}`,
+          ].join('\n')
+          const agent = invocation.agent
+          Promise.resolve()
+            .then(async () => {
+              let message
+              try {
+                const { createUserMessage } = await import('@deepseek-ai/dsh-llm')
+                message = createUserMessage({ content: [{ type: 'text', text: composed }], source: { kind: 'user' } })
+              } catch {
+                message = { role: 'user', content: [{ type: 'text', text: composed }], source: { kind: 'user' } }
+              }
+              agent.steer(message)
+            })
+            .catch((e) => {
+              commandCtx.logger?.warn?.('prompt-optimize steer failed: %o', e)
+            })
+          return { kind: 'success', text: '已提交改写请求，回复即为优化后的提示词。' }
+        },
+      })
+    })
+  } catch {
+    // commands 服务不可用的 profile 上跳过命令注册
+  }
+
+  startHubBridge(ctx)
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +187,7 @@ const HUB_ROUTES = [
   { method: 'GET', path: '/aipx-hub/tools', handle: (bridge, body, query) => bridge.tools(query.limit) },
   { method: 'POST', path: '/aipx-hub/search', handle: (bridge, body) => bridge.search(body.query ?? '', body.limit) },
   { method: 'GET', path: '/aipx-hub/config', handle: (bridge) => bridge.getConfig() },
+  { method: 'POST', path: '/aipx-hub/optimize', handle: (bridge, body) => bridge.optimize(body.text) },
   {
     method: 'POST',
     path: '/aipx-hub/servers',

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFileSync, readFile, rename, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -149,6 +149,50 @@ export class HubBridge {
     const results = { results: await this._search(String(query ?? ''), positiveInt(Math.floor(Number(limit)), SEARCH_DEFAULT_LIMIT), SEARCH_TIMEOUT_MS) }
     if (this.searchEngine) results.engine = this.searchEngine
     return results
+  }
+
+  /**
+   * Prompt optimization: rewrite the composer draft into a structured
+   * high-quality prompt via the DeepSeek API. The key resolution mirrors the
+   * hub's own credential store (env first, then ~/.dsh/.credentials.yaml).
+   */
+  async optimize(text) {
+    const key = this._deepseekKey()
+    if (!key) {
+      throw Object.assign(new Error('未找到 DeepSeek API key——在 ~/.dsh/.credentials.yaml 配置后重试'), { status: 400 })
+    }
+    const r = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: '你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。' },
+          { role: 'user', content: String(text ?? '') },
+        ],
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+    if (!r.ok) {
+      const detail = await r.text().catch(() => '')
+      throw Object.assign(new Error(`DeepSeek API ${r.status}: ${detail.slice(0, 200)}`), { status: 502 })
+    }
+    const data = await r.json()
+    const out = data?.choices?.[0]?.message?.content
+    if (typeof out !== 'string' || out.length === 0) throw new Error('DeepSeek 返回了空内容')
+    return { text: out.trim() }
+  }
+
+  _deepseekKey() {
+    if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY
+    try {
+      const yaml = readFileSync(path.join(os.homedir(), '.dsh', '.credentials.yaml'), 'utf8')
+      const m = /^\s*DEEPSEEK_API_KEY:\s*(.+)$/m.exec(yaml)
+      return m ? m[1].trim() : null
+    } catch {
+      return null
+    }
   }
 
   /** The parsed mcp-hub.json; a missing or corrupt file reads as {servers: {}} — same policy as the hub. */
