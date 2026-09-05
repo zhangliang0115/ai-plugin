@@ -145,7 +145,7 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 ## 环境要求
 
 Node.js ≥ 20 与 `tar`（macOS、Linux、Windows 10+ 均内置）。无需 `npm install`——
-`npx github:zhangliang0115/ai-plugin` 直接从仓库运行。可选：`GITHUB_TOKEN`
+`npx github:zhangliang0115/ai-plugin` 直接从仓库运行；也可全局安装 `npm i -g @zhangliang0115/aipx`。可选：`GITHUB_TOKEN`
 提升 API 速率限制。
 
 ## 路线图

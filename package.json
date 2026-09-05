@@ -1,12 +1,11 @@
 {
-  "name": "aipx",
+  "name": "@zhangliang0115/aipx",
   "version": "0.5.2",
   "description": "One command to install any AI agent skill/plugin into Claude Code, DeepSeek Harness (dsh), Codex CLI, Gemini CLI, Copilot and Cursor.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "aipx": "bin/aipx.js",
-    "ai-plugin": "bin/aipx.js"
+    "aipx": "bin/aipx.js"
   },
   "engines": {
     "node": ">=20"

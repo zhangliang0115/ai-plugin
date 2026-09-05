@@ -198,7 +198,7 @@ dsh plugin --profile web add "github:zhangliang0115/ai-plugin#path:/dsh-plugin"
 ## Requirements
 
 Node.js ≥ 20 and `tar` (built into macOS, Linux, Windows 10+). No `npm install`
-step — `npx github:zhangliang0115/ai-plugin` runs straight from the repo.
+step — `npx github:zhangliang0115/ai-plugin` runs straight from the repo, or install globally with `npm i -g @zhangliang0115/aipx`.
 Optional: `GITHUB_TOKEN` for higher API rate limits.
 
 ## Roadmap
