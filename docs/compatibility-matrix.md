@@ -13,8 +13,9 @@ roots with `--all` or an explicit `--agents <id>`).
 | Gemini CLI | `~/.gemini/skills/` | `<project>/.gemini/skills/` | `gemini extensions` | official |
 | GitHub Copilot CLI | `~/.copilot/skills/` | `<project>/.github/skills/` | `copilot plugin marketplace add owner/repo`; `.github/plugin.json` manifest | official |
 | Cursor | `~/.cursor/skills/` | `<project>/.cursor/skills/` | rules + skills directories | community |
-| OpenCode | `~/.config/opencode/skills/` | `<project>/.opencode/skills/` | config + skills directories | community |
-| OpenClaw | `~/.openclaw/skills/` | — | skills directories / ClawHub | community |
+| OpenCode | `~/.config/opencode/skills/` | `<project>/.opencode/skills/` | config + skills directories; also reads `~/.agents/skills` (official docs) | official |
+| OpenClaw | `~/.openclaw/skills/` | `<project>/.agents/skills/` | skills directories / ClawHub; reads `~/.agents/skills` by default (official docs) | official |
+| DeepSeek-Reasonix | `~/.reasonix/skills/` | `<project>/.agents/skills/` | plugin packages; reads `.agents/skills` convention dirs natively (source: `internal/config/paths.go`) | official |
 
 ## What aipx does with this
 
@@ -27,6 +28,19 @@ roots with `--all` or an explicit `--agents <id>`).
   found, via binary or config dir, and whether roots are writable.
 
 ## Notes and gotchas discovered during research
+
+- Reasonix (2026-09, source-level): MCP servers live in `~/.reasonix/config.toml`
+  as `[[plugins]]` array-of-tables rows keyed by a `name = "..."` line — aipx
+  writes format `toml-aot` for it. Remote servers need an explicit
+  `type = "http"`. It also reads project-level `.mcp.json` (Claude format).
+- ruflo (70k★): not a harness of its own — it creates `.claude/*` and
+  `.mcp.json`, so aipx supports its users through the existing Claude Code /
+  Codex targets. No new target needed.
+- OpenCode MCP config: project-level file is `opencode.json` at the repo root
+  (not `.opencode/opencode.json`); local defs use `command` as an array with
+  `environment` for env, remote defs use `{type: "remote", url}`.
+- OpenClaw MCP config: `~/.openclaw/openclaw.json` nests servers under
+  `mcp.servers`. aipx JSON targets support dotted keys for this.
 
 - dsh scans **only direct children** of a discovery root; nested
   `a/b/SKILL.md` is invisible.
