@@ -53,7 +53,7 @@ test('MCP install respects tier policy — community targets need --all', async 
   const payload = await makeMcpPayload()
 
   const res = await install(payload, { mcpHome: home })
-  assert.equal(res.installed, 3) // official: claude-code, gemini, codex
+  assert.equal(res.installed, 5) // official: claude-code, gemini, codex, opencode, openclaw
   await assert.rejects(() => readFile(path.join(home, '.cursor', 'mcp.json'), 'utf8'))
 
   const res2 = await install(payload, { mcpHome: home, all: true })
@@ -109,9 +109,9 @@ test('remove uninstalls MCP servers from recorded configs, preserving the rest',
   )
   await writeCodexPreexisting(home)
 
-  await install(payload, { mcpHome: home }) // official tier: claude-code, gemini, codex
+  await install(payload, { mcpHome: home }) // official tier: claude-code, gemini, codex, opencode, openclaw
   const res = await remove('fetch', { home })
-  assert.equal(res, 3)
+  assert.equal(res, 5)
 
   const claude = JSON.parse(await readFile(path.join(home, '.claude.json'), 'utf8'))
   assert.ok(!claude.mcpServers.fetch)

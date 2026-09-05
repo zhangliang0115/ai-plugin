@@ -22,7 +22,8 @@ export const MCP_TARGETS = [
   { agentId: 'gemini', file: '~/.gemini/settings.json', format: 'json', key: 'mcpServers', tier: 'official' },
   { agentId: 'codex', file: '~/.codex/config.toml', format: 'toml', key: 'mcp_servers', tier: 'official' },
   { agentId: 'copilot', file: '~/.copilot/mcp-config.json', format: 'json', key: 'mcpServers', tier: 'community' },
-  { agentId: 'opencode', file: '~/.config/opencode/opencode.json', format: 'json', key: 'mcp', tier: 'community' },
+  { agentId: 'opencode', file: '~/.config/opencode/opencode.json', format: 'json', key: 'mcp', tier: 'official', mapDef: 'opencode' },
+  { agentId: 'openclaw', file: '~/.openclaw/openclaw.json', format: 'json', key: 'mcp.servers', tier: 'official' },
 ]
 
 /**
@@ -48,6 +49,28 @@ function resolveTarget(target, home) {
 // JSON format
 // ---------------------------------------------------------------------------
 
+function keyPath(key) {
+  return key.split('.')
+}
+
+function sectionAt(parsed, keys) {
+  let node = parsed
+  for (const k of keys) {
+    if (!node || typeof node !== 'object') return undefined
+    node = node[k]
+  }
+  return node
+}
+
+function ensureSection(parsed, keys) {
+  let node = parsed
+  for (const k of keys) {
+    if (!node[k] || typeof node[k] !== 'object') node[k] = {}
+    node = node[k]
+  }
+  return node
+}
+
 async function readJsonServers(resolvedFile, key) {
   if (!(await exists(resolvedFile))) return { servers: new Map(), exists: false }
   let parsed
@@ -56,7 +79,7 @@ async function readJsonServers(resolvedFile, key) {
   } catch (e) {
     throw new Error(`cannot parse ${resolvedFile}: ${e.message}`)
   }
-  const section = parsed?.[key]
+  const section = sectionAt(parsed, keyPath(key))
   const servers = new Map()
   if (section && typeof section === 'object') {
     for (const [name, def] of Object.entries(section)) {
@@ -71,8 +94,8 @@ async function writeJsonServer(resolvedFile, key, name, def) {
   if (await exists(resolvedFile)) {
     parsed = JSON.parse(await readFile(resolvedFile, 'utf8'))
   }
-  if (!parsed[key] || typeof parsed[key] !== 'object') parsed[key] = {}
-  parsed[key][name] = def
+  const section = ensureSection(parsed, keyPath(key))
+  section[name] = def
   await mkdir(path.dirname(resolvedFile), { recursive: true })
   await writeFile(resolvedFile, JSON.stringify(parsed, null, 2) + '\n', 'utf8')
 }
@@ -242,11 +265,39 @@ async function readJsonOrToml(target) {
 }
 
 /** Write one server definition into a resolved target config (test hook friendly). */
+// Definition-shape adapters: some agents want the same data in a different
+// coat. Each takes the aipx canonical def ({command, args?, env?} or {url})
+// and returns the target's native shape, or null when the def cannot be
+// expressed (caller skips with a notice instead of writing something wrong).
+const DEF_MAPPERS = {
+  // OpenCode: local = { type:'local', command:[cmd,...args], environment } —
+  // remote = { type:'remote', url }
+  opencode(def) {
+    if (typeof def.command === 'string' && def.command !== '') {
+      return {
+        type: 'local',
+        command: [def.command, ...(def.args ?? []).map(String)],
+        ...(def.env && Object.keys(def.env).length > 0 ? { environment: def.env } : {}),
+        enabled: true,
+      }
+    }
+    if (typeof def.url === 'string' && def.url !== '') {
+      return { type: 'remote', url: def.url, enabled: true }
+    }
+    return null
+  },
+}
+
 export async function writeServer(target, name, def) {
+  const mapped = target.mapDef && DEF_MAPPERS[target.mapDef] ? DEF_MAPPERS[target.mapDef](def) : def
+  if (mapped === null) {
+    info(`${target.agentId}: this server definition cannot be expressed in ${target.agentId}'s config format — skipped`)
+    return
+  }
   if (target.format === 'toml') {
-    await writeTomlServer(target.resolvedFile, target.key, name, def)
+    await writeTomlServer(target.resolvedFile, target.key, name, mapped)
   } else {
-    await writeJsonServer(target.resolvedFile, target.key, name, def)
+    await writeJsonServer(target.resolvedFile, target.key, name, mapped)
   }
 }
 
@@ -276,7 +327,7 @@ export async function removeServer(target, name) {
     return true
   }
   const parsed = JSON.parse(await readFile(target.resolvedFile, 'utf8'))
-  const section = parsed?.[target.key]
+  const section = sectionAt(parsed, keyPath(target.key))
   if (!section || !(name in section)) return false
   delete section[name]
   await writeFile(target.resolvedFile, JSON.stringify(parsed, null, 2) + '\n', 'utf8')
