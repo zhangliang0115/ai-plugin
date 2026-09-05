@@ -53,7 +53,7 @@ test('MCP install respects tier policy — community targets need --all', async 
   const payload = await makeMcpPayload()
 
   const res = await install(payload, { mcpHome: home })
-  assert.equal(res.installed, 5) // official: claude-code, gemini, codex, opencode, openclaw
+  assert.equal(res.installed, 6) // official: claude-code, gemini, codex, opencode, openclaw, reasonix
   await assert.rejects(() => readFile(path.join(home, '.cursor', 'mcp.json'), 'utf8'))
 
   const res2 = await install(payload, { mcpHome: home, all: true })
@@ -111,7 +111,7 @@ test('remove uninstalls MCP servers from recorded configs, preserving the rest',
 
   await install(payload, { mcpHome: home }) // official tier: claude-code, gemini, codex, opencode, openclaw
   const res = await remove('fetch', { home })
-  assert.equal(res, 5)
+  assert.equal(res, 6)
 
   const claude = JSON.parse(await readFile(path.join(home, '.claude.json'), 'utf8'))
   assert.ok(!claude.mcpServers.fetch)
@@ -123,6 +123,48 @@ test('remove uninstalls MCP servers from recorded configs, preserving the rest',
   process.env.AIPX_CONFIG_DIR = prev
   await rm(home, { recursive: true, force: true })
   await rm(payload, { recursive: true, force: true })
+})
+
+
+test('reasonix config: AoT rows survive unrelated content and update in place', async () => {
+  const prev = process.env.AIPX_CONFIG_DIR
+  process.env.AIPX_CONFIG_DIR = await mkdtemp(path.join(tmpdir(), 'aipx-reaot-'))
+  const home = await mkdtemp(path.join(tmpdir(), 'aipx-rehome-'))
+  // pre-existing config with an unrelated section and an existing plugin row
+  const cfgPath = path.join(home, '.reasonix', 'config.toml')
+  await mkdir(path.dirname(cfgPath), { recursive: true })
+  await writeFile(
+    cfgPath,
+    '[other]\nkey = "keep"\n\n[[plugins]]\nname = "old-plugin"\ncommand = "old"\n',
+    'utf8'
+  )
+
+  const { mcpTargets, writeServer, removeServer, readServers } = await import('../src/mcp.js')
+  const target = mcpTargets(home).find((t) => t.agentId === 'reasonix')
+
+  await writeServer(target, 'fetch', { command: 'npx', args: ['-y', 'mcp-fetch'], env: { K: 'v' } })
+  await writeServer(target, 'old-plugin', { command: 'updated-cmd' })
+
+  const text = await readFile(cfgPath, 'utf8')
+  assert.ok(text.includes('[other]') && text.includes('key = "keep"')) // unrelated survives
+  assert.ok(!text.includes('old-cmd')) // updated in place, not appended
+  assert.ok(text.includes('updated-cmd'))
+
+  const servers = await readServers(target)
+  assert.equal(servers.get('fetch').command, 'npx')
+  assert.deepEqual(servers.get('fetch').args, ['-y', 'mcp-fetch'])
+  assert.equal(servers.get('fetch').env.K, 'v')
+  assert.equal(servers.get('old-plugin').command, 'updated-cmd')
+
+  assert.equal(await removeServer(target, 'old-plugin'), true)
+  const after = await readFile(cfgPath, 'utf8')
+  assert.ok(!after.includes('updated-cmd'))
+  assert.ok(after.includes('fetch')) // the other row survives
+  assert.ok(after.includes('[other]'))
+
+  process.env.AIPX_CONFIG_DIR = prev
+  await rm(home, { recursive: true, force: true })
+  await rm(path.dirname(cfgPath) === home ? home : path.dirname(cfgPath), { recursive: true, force: true }).catch(() => {})
 })
 
 async function writeCodexPreexisting(home) {

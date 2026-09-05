@@ -24,6 +24,7 @@ export const MCP_TARGETS = [
   { agentId: 'copilot', file: '~/.copilot/mcp-config.json', format: 'json', key: 'mcpServers', tier: 'community' },
   { agentId: 'opencode', file: '~/.config/opencode/opencode.json', format: 'json', key: 'mcp', tier: 'official', mapDef: 'opencode' },
   { agentId: 'openclaw', file: '~/.openclaw/openclaw.json', format: 'json', key: 'mcp.servers', tier: 'official' },
+  { agentId: 'reasonix', file: '~/.reasonix/config.toml', format: 'toml-aot', key: 'plugins', tier: 'official' },
 ]
 
 /**
@@ -98,6 +99,123 @@ async function writeJsonServer(resolvedFile, key, name, def) {
   section[name] = def
   await mkdir(path.dirname(resolvedFile), { recursive: true })
   await writeFile(resolvedFile, JSON.stringify(parsed, null, 2) + '\n', 'utf8')
+}
+
+// ---------------------------------------------------------------------------
+// TOML array-of-tables (Reasonix) — [[plugins]] rows distinguished by a
+// name = "..." line, not by the table header. Same minimal line-based
+// approach as the Codex writer; strings are JSON-escaped (a superset of
+// TOML basic strings for the values we write).
+// ---------------------------------------------------------------------------
+
+function tomlAotRows(text, key) {
+  const header = `[${key}]`
+  const rows = []
+  const lines = text.split('\n')
+  let i = 0
+  while (i < lines.length) {
+    if (lines[i].trim() === header) {
+      const start = i
+      const row = { start, lines: [] }
+      i += 1
+      while (i < lines.length && lines[i].trim() !== header) {
+        // stop at the next table header of any kind ([x] or [[x]])
+        if (/^\s*\[/.test(lines[i])) break
+        row.lines.push(lines[i])
+        i += 1
+      }
+      const nameMatch = row.lines.map((l) => /^\s*name\s*=\s*"([^"]*)"\s*$/.exec(l)).find(Boolean)
+      if (nameMatch) {
+        row.name = nameMatch[1]
+        rows.push(row)
+      }
+      continue
+    }
+    i += 1
+  }
+  return rows
+}
+
+function tomlAotDefLines(def) {
+  const lines = []
+  if (def.type) lines.push(`type = "${String(def.type)}"`)
+  if (typeof def.command === 'string' && def.command !== '') {
+    lines.push(`command = "${String(def.command)}"`)
+    if (Array.isArray(def.args) && def.args.length > 0) {
+      lines.push(`args = [${def.args.map((a) => `"${String(a)}"`).join(', ')}]`)
+    }
+  }
+  if (typeof def.url === 'string' && def.url !== '') lines.push(`url = "${String(def.url)}"`)
+  if (def.env && typeof def.env === 'object') {
+    const entries = Object.entries(def.env)
+    if (entries.length > 0) {
+      lines.push(`env = { ${entries.map(([k, v]) => `${k} = "${String(v)}"`).join(', ')} }`)
+    }
+  }
+  return lines
+}
+
+function parseTomlAotPlugins(text, key) {
+  const servers = new Map()
+  for (const row of tomlAotRows(text, key)) {
+    // recover a canonical def from the row lines (best-effort read view)
+    const get = (k) => {
+      const m = row.lines.map((l) => new RegExp(`^\\s*${k}\\s*=\\s*(.+)$`).exec(l)).find(Boolean)
+      return m ? m[1].trim() : undefined
+    }
+    const def = {}
+    const command = get('command')
+    if (command) def.command = command.replace(/^"|"$/g, '')
+    const argsRaw = get('args')
+    if (argsRaw) def.args = [...argsRaw.matchAll(/"([^"]*)"/g)].map((m) => m[1])
+    const url = get('url')
+    if (url) def.url = url.replace(/^"|"$/g, '')
+    const envRaw = get('env')
+    if (envRaw) {
+      def.env = {}
+      for (const m of envRaw.matchAll(/(\w+) = "([^"]*)"/g)) def.env[m[1]] = m[2]
+    }
+    servers.set(row.name, def)
+  }
+  return servers
+}
+
+async function writeTomlAotPlugin(resolvedFile, key, name, def) {
+  let text = ''
+  if (await exists(resolvedFile)) text = await readFile(resolvedFile, 'utf8')
+  const rows = tomlAotRows(text, key)
+  const defLines = tomlAotDefLines(def)
+  const header = `[${key}]`
+  const lines = text.split('\n')
+  const existing = rows.find((r) => r.name === name)
+  const newBlock = [header, `name = "${name}"`, ...defLines]
+  let out
+  if (existing) {
+    const before = lines.slice(0, existing.start)
+    let afterStart = existing.start + 1 + existing.lines.length
+    while (afterStart < lines.length && lines[afterStart].trim() === '') afterStart += 1
+    out = [...before, ...newBlock, '', ...lines.slice(afterStart)]
+  } else {
+    const trimmed = text.length > 0 && !text.endsWith('\n') ? text + '\n' : text
+    const sep = trimmed.trim() === '' ? '' : '\n'
+    out = (trimmed + sep + newBlock.join('\n') + '\n').split('\n')
+    out = out.join('\n').split('\n')
+  }
+  await mkdir(path.dirname(resolvedFile), { recursive: true })
+  await writeFile(resolvedFile, out.join('\n'), 'utf8')
+}
+
+async function removeTomlAotPlugin(resolvedFile, key, name) {
+  if (!(await exists(resolvedFile))) return false
+  const rows = tomlAotRows(await readFile(resolvedFile, 'utf8'), key)
+  const existing = rows.find((r) => r.name === name)
+  if (!existing) return false
+  const lines = (await readFile(resolvedFile, 'utf8')).split('\n')
+  let afterStart = existing.start + 1 + existing.lines.length
+  while (afterStart < lines.length && lines[afterStart].trim() === '') afterStart += 1
+  lines.splice(existing.start, afterStart - existing.start)
+  await writeFile(resolvedFile, lines.join('\n'), 'utf8')
+  return true
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +373,11 @@ export async function listMcp(opts = {}) {
 }
 
 async function readJsonOrToml(target) {
+  if (target.format === 'toml-aot') {
+    if (!(await exists(target.resolvedFile))) return { servers: new Map(), exists: false }
+    const text = await readFile(target.resolvedFile, 'utf8')
+    return { servers: parseTomlAotPlugins(text, target.key), exists: true }
+  }
   if (target.format === 'toml') {
     if (!(await exists(target.resolvedFile))) return { servers: new Map(), exists: false }
     const text = await readFile(target.resolvedFile, 'utf8')
@@ -270,6 +393,14 @@ async function readJsonOrToml(target) {
 // and returns the target's native shape, or null when the def cannot be
 // expressed (caller skips with a notice instead of writing something wrong).
 const DEF_MAPPERS = {
+  // Reasonix AoT rows need an explicit transport type: stdio is the default,
+  // remote (url-only) defs must say type = "http"
+  reasonix(def) {
+    if (typeof def.url === 'string' && def.url !== '' && !def.command) {
+      return { ...def, type: 'http' }
+    }
+    return def
+  },
   // OpenCode: local = { type:'local', command:[cmd,...args], environment } —
   // remote = { type:'remote', url }
   opencode(def) {
@@ -294,7 +425,9 @@ export async function writeServer(target, name, def) {
     info(`${target.agentId}: this server definition cannot be expressed in ${target.agentId}'s config format — skipped`)
     return
   }
-  if (target.format === 'toml') {
+  if (target.format === 'toml-aot') {
+    await writeTomlAotPlugin(target.resolvedFile, target.key, name, mapped)
+  } else if (target.format === 'toml') {
     await writeTomlServer(target.resolvedFile, target.key, name, mapped)
   } else {
     await writeJsonServer(target.resolvedFile, target.key, name, mapped)
@@ -310,6 +443,9 @@ export async function readServers(target) {
 /** Remove a server definition from a resolved target config. Returns true when removed. */
 export async function removeServer(target, name) {
   if (!(await exists(target.resolvedFile))) return false
+  if (target.format === 'toml-aot') {
+    return removeTomlAotPlugin(target.resolvedFile, target.key, name)
+  }
   if (target.format === 'toml') {
     const text = await readFile(target.resolvedFile, 'utf8')
     const { sectionStart, lines } = parseTomlMcpServers(text, target.key)
