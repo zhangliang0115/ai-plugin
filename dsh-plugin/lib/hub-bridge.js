@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
-import { mkdir, readFileSync, readFile, rename, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
