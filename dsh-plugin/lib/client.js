@@ -993,8 +993,8 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				),
 				(0, h)("div", { className: "apxdsh-form" },
 					(0, h)(SwitchRow, {
-						label: "MCP 中枢",
-						hint: "Servers / 工具目录 / Search 试玩 三区块",
+						label: "工具中枢",
+						hint: "MCP 服务器 / 工具目录 / 模型工具,未来更多 aipx 工具",
 						checked: config.features.mcpConsole.enabled === true,
 						disabled: busy,
 						onChange: (checked) => void save({ features: { mcpConsole: { enabled: checked } } })
@@ -1728,7 +1728,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				name: "settings.plugins.tab",
 				id: "aipx-hub-console",
 				order: 50,
-				label: "MCP 中枢"
+				label: "工具中枢"
 			}, HubConsole));
 			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
 				name: "conversation.composer.dock",

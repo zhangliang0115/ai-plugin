@@ -1,7 +1,7 @@
 {
   "name": "ai-plugin-toolkit-dsh",
   "version": "0.5.2",
-  "description": "DeepSeek Harness bundle that registers the aipx toolkit skills: cross-agent skill authoring, dsh plugin development, Claude Code plugin development, and DeepSeek model cost routing",
+  "description": "aipx 工具全家桶 for DeepSeek Harness — skills / prompt-optimize / MCP 工具中枢,以及未来更多跨 agent 工具。brings the aipx toolkit (cross-agent skill authoring, dsh plugin development, Claude Code plugin development, DeepSeek model cost routing) into dsh.",
   "type": "module",
   "main": "index.js",
   "bin": {
