@@ -7,7 +7,7 @@ export const name = 'ai-plugin-toolkit'
 // `webserver` is provided by dsh-web-app only; on tui/headless profiles the
 // plugin still loads — a missing injected service just throws on access,
 // which startHubBridge treats as "no console here".
-export const inject = ['skills']
+export const inject = ['skills', 'tools']
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -436,6 +436,9 @@ function registerHubRoutes(ctx, webServer) {
  * loop: mcp_search first (returns the id + inputSchema), then mcp_call.
  */
 export function buildToolDefs(bridge) {
+  const textRender = (args, value) => [{ type: 'text', text: String(value) }]
+  const noArgs = { type: 'object', properties: {}, required: [] }
+  const stringOutput = { schema: { type: 'string' }, render: textRender }
   return [
     {
       name: 'mcp_search',
@@ -444,10 +447,14 @@ export function buildToolDefs(bridge) {
         'Always call this first when you need a capability: it returns matching tool ids, a description, ' +
         'and the exact inputSchema needed to call it. Then execute with mcp_call.',
       parameters: {
-        query: { type: 'string', required: true, description: 'Keywords for the capability you need, e.g. "redis get" or "browser screenshot"' },
-        limit: { type: 'number', description: 'Max results (default 8)' },
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Keywords for the capability you need, e.g. "redis get" or "browser screenshot"' },
+          limit: { type: 'number', description: 'Max results (default 8)' },
+        },
+        required: ['query'],
       },
-      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      output: stringOutput,
       async execute(args) {
         return JSON.stringify(await bridge.search(String(args.query ?? ''), args.limit ?? 8), null, 2)
       },
@@ -458,10 +465,14 @@ export function buildToolDefs(bridge) {
         'Execute a downstream MCP tool. `tool` is the "<server>/<tool>" id from mcp_search results, ' +
         'and `arguments` must match the inputSchema that mcp_search returned for it.',
       parameters: {
-        tool: { type: 'string', required: true, description: 'Tool id from mcp_search, in "<server>/<tool>" form' },
-        arguments: { type: 'json', description: 'Arguments matching the tool\'s inputSchema' },
+        type: 'object',
+        properties: {
+          tool: { type: 'string', description: 'Tool id from mcp_search, in "<server>/<tool>" form' },
+          arguments: { type: 'object', description: 'Arguments matching the tool\'s inputSchema' },
+        },
+        required: ['tool'],
       },
-      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      output: stringOutput,
       async execute(args) {
         return JSON.stringify(await bridge.call(String(args.tool ?? ''), args.arguments), null, 2)
       },
@@ -469,8 +480,8 @@ export function buildToolDefs(bridge) {
     {
       name: 'mcp_status',
       description: 'List the registered MCP servers with their tool counts, health, and the active search engine.',
-      parameters: {},
-      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      parameters: noArgs,
+      output: stringOutput,
       async execute() {
         return JSON.stringify(await bridge.status(), null, 2)
       },
@@ -478,8 +489,8 @@ export function buildToolDefs(bridge) {
     {
       name: 'mcp_refresh',
       description: 'Re-scan all registered MCP servers. Use after servers are added, removed or restarted.',
-      parameters: {},
-      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      parameters: noArgs,
+      output: stringOutput,
       async execute() {
         return JSON.stringify(await bridge.refresh(), null, 2)
       },
@@ -488,48 +499,39 @@ export function buildToolDefs(bridge) {
 }
 
 /**
- * Register the 4 meta tools on `ctx.tools` when this profile has a tool
- * registry. `@deepseek-ai/dsh-tools` is dsh-provided, so it is imported
- * defensively (mirrors the dynamic dsh-llm import in /prompt-optimize): a
- * resolution failure or a tools-less profile just skips registration — never
- * blocks the skills/console. The hub backs the tools inside a HubBridge, so
- * console and model share one hub builder over the same mcp-hub.json.
+ * Register the 4 meta tools on `ctx.tools`. `inject: ['skills','tools']`
+ * (matching dsh-mcp-client's contract) guarantees ctx.tools is the ToolRuntime;
+ * the definitions are built as the plain ToolDefinition shape that registry
+ * accepts directly (mcp-client does the same) — no import of
+ * `@deepseek-ai/dsh-tools`, which the bundme cannot resolve. The hub backs the
+ * tools inside a HubBridge, so console and model read the same mcp-hub.json.
  */
 function registerHubTools(ctx) {
   let tools
   try {
-    tools = ctx.reflect?.get?.('tools') ?? ctx.tools
+    tools = ctx.tools ?? ctx.reflect?.get?.('tools')
   } catch {
-    return // no tools service in this profile
+    tools = null
   }
-  if (!tools || typeof tools.register !== 'function') return
+  if (!tools || typeof tools.register !== 'function') {
+    console.error('[ai-plugin-toolkit] registerHubTools: no ctx.tools service — MCP tools skipped')
+    return
+  }
 
   const bridge = new HubBridge({ log: (msg) => ctx.logger?.info?.('aipx-tools: %s', msg) })
   const disposers = []
   ctx.effect(() => {
-    let cancelled = false
-    import('@deepseek-ai/dsh-tools')
-      .then((mod) => {
-        if (cancelled) return
-        const defineTool = mod?.defineTool
-        if (typeof defineTool !== 'function') {
-          ctx.logger?.info?.('ai-plugin-toolkit: @deepseek-ai/dsh-tools unavailable — skip MCP tool registration')
-          return
-        }
-        for (const spec of buildToolDefs(bridge)) {
-          try {
-            disposers.push(tools.register(defineTool(spec)))
-          } catch (e) {
-            ctx.logger?.warn?.('ai-plugin-toolkit: failed to register tool %s: %o', spec.name, e)
-          }
-        }
-        ctx.logger?.info?.('ai-plugin-toolkit: registered %d in-process hub tool(s)', disposers.length)
-      })
-      .catch((e) => {
-        ctx.logger?.info?.('ai-plugin-toolkit: dsh-tools import failed (%s) — skip MCP tools', e?.code ?? e?.message)
-      })
+    for (const def of buildToolDefs(bridge)) {
+      try {
+        disposers.push(tools.register(def))
+      } catch (e) {
+        ctx.logger?.warn?.('ai-plugin-toolkit: failed to register tool %s: %o', def.name, e)
+        console.error(`[ai-plugin-toolkit] register ${def.name} failed: ${String(e?.message ?? e)}`)
+      }
+    }
+    ctx.logger?.info?.('ai-plugin-toolkit: registered %d in-process hub tool(s)', disposers.length)
+    console.error(`[ai-plugin-toolkit] registerHubTools: ${disposers.length} tool(s) registered`)
     return () => {
-      cancelled = true
       for (const dispose of disposers) dispose?.()
       disposers.length = 0
       void bridge.stop()

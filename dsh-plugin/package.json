@@ -52,8 +52,5 @@
   "license": "MIT",
   "engines": {
     "node": ">=20"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "*"
   }
 }
