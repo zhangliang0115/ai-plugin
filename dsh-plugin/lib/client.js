@@ -959,46 +959,124 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			);
 		}
 		//#endregion
+		//#region lib/client/composer-dom.js
+		/**
+		* Shared composer DOM access for both prompt-optimize surfaces (the session
+		* dock and the hero fallback). The page carries several textarea/
+		* contenteditable candidates (responsive duplicate panels, hero variant);
+		* only the visible one in the lower viewport is where the user types.
+		*/
+		const findComposerEl = () => {
+			const candidates = [...document.querySelectorAll('textarea, [contenteditable="true"]')]
+				.filter((el) => {
+					const r = el.getBoundingClientRect();
+					if (r.width < 80 || r.height < 24) return false;
+					const style = getComputedStyle(el);
+					return !(style.visibility === "hidden" || style.display === "none");
+				});
+			// 活跃 composer 是「底边最低」的可见输入框：正常视图贴底，hero 变体居中
+			// 但仍低于搜索框等顶部输入。个别布局（如损坏会话）会把 composer 顶到
+			// 页面上部——按底边排序仍能选中它，硬性要求下半屏反而会找不到。
+			const visible = candidates.filter((el) => el.offsetParent !== null);
+			const pool = visible.length > 0 ? visible : candidates;
+			return pool.slice().sort((a, b) => b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom)[0] ?? null;
+		};
+		/** 校验只比「有效字符」：换行在 Lexical model 里是段落节点，textContent
+		* 拼接时没有空白；markdown 快捷变换又会吃掉 #、* 等标记换成格式。去掉
+		* 空白与标记符后比较——要抓的是「没写进去/被弹回」，不是格式差异。 */
+		const COMPOSER_SIGNIFICANT = /[\u200b\u200c\u200d\ufeff\s#"*_~]/g;
+		const significant = (text) => text.replace(COMPOSER_SIGNIFICANT, "");
+		const composerText = (composer) => significant(composer.textContent ?? "");
+		const writeComposerEl = async (composer, text) => {
+			if (composer.tagName === "TEXTAREA" || composer.tagName === "INPUT") {
+				const proto = Object.getPrototypeOf(composer);
+				Object.getOwnPropertyDescriptor(proto, "value").set.call(composer, text);
+				composer.dispatchEvent(new Event("input", { bubbles: true }));
+				return;
+			}
+			const expect = significant(text);
+			// 输入框由 Lexical 代理：DOM 后门（execCommand/直写）都会被它的
+			// reconcile 弹回旧 model，点击按钮造成的失焦更会清掉选区。唯一稳的
+			// 路是 Lexical 公开 API——editor state JSON 改写后 setEditorState。
+			// 非 Lexical 的 contenteditable 仍走编辑管线兜底；逐策略写完即校验，
+			// 全失败就抛错，宁可报“优化失败”也不谎报成功。
+			const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+			const focusEditor = async () => {
+				composer.focus();
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+			};
+			const selectAll = () => {
+				const sel = window.getSelection();
+				const range = document.createRange();
+				range.selectNodeContents(composer);
+				sel.removeAllRanges();
+				sel.addRange(range);
+			};
+			const strategies = [
+				// 首选：Lexical model 级替换。按行拆成段落节点，和用户手敲多行的
+				// 结构一致；parse/set 都是 Lexical 公开 API。
+				async () => {
+					const editor = composer.__lexicalEditor;
+					if (!editor || typeof editor.parseEditorState !== "function" || typeof editor.setEditorState !== "function") return;
+					const json = editor.getEditorState().toJSON();
+					json.root.children = text.split("\n").map((line) => ({
+						type: "paragraph", version: 1, format: "", indent: 0, direction: null,
+						children: [{ type: "text", text: line, version: 1, detail: 0, format: 0, mode: "normal", style: "" }]
+					}));
+					editor.setEditorState(editor.parseEditorState(json));
+					await settle(120);
+				},
+				async () => {
+					await focusEditor();
+					selectAll();
+					document.execCommand("insertText", false, text);
+				},
+				async () => {
+					await focusEditor();
+					document.execCommand("selectAll", false, null);
+					document.execCommand("insertText", false, text);
+				},
+				// 最后的兜底：直写 DOM + 事件对。model 可能不认账（下一拍被回滚），
+				// 校验放在一拍之后——被回滚就当失败处理。
+				async () => {
+					await focusEditor();
+					composer.textContent = text;
+					composer.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: text }));
+					composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+					await new Promise((resolve) => requestAnimationFrame(resolve));
+				}
+			];
+			for (const run of strategies) {
+				try {
+					await run();
+				} catch {}
+				if (composerText(composer) === expect) return;
+			}
+			throw new Error("改写结果写不进输入框（编辑器拒绝了外部替换）");
+		};
+		/** One /aipx-hub/optimize round trip; throws with the bridge's error text. */
+		const requestOptimize = async (text) => {
+			const r = await fetch("/aipx-hub/optimize", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ text })
+			});
+			const data = await r.json().catch(() => ({}));
+			if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
+			return data.text;
+		};
+		//#endregion
 		//#region lib/client/PromptOptimizeDock.js
 		/**
-		* ✦ 优化提示词 —— composer 卡片正下方的 dock 条目。点击后读取输入框
-		* 草稿，经 /aipx-hub/optimize（DeepSeek 改写）替换回输入框。
+		* ✦ 优化提示词 —— 会话内 composer 卡片正下方的 dock 条目。点击后读取
+		* 输入框草稿，经 /aipx-hub/optimize（DeepSeek 改写）替换回输入框。
 		*/
 		function PromptOptimizeDock() {
 			const [phase, setPhase] = (0, react.useState)("idle");
 			const [note, setNote] = (0, react.useState)(null);
-			// 当前会话可见的 composer 输入框：页面里有多个 textarea/contenteditable
-			// （响应式重复面板、hero 变体等），只有视口内可见且属于活跃会话视图的
-			// 那个才是用户正在打字的地方。
-			const findComposer = () => {
-				const candidates = [...document.querySelectorAll('textarea, [contenteditable="true"]')]
-					.filter((el) => {
-						const r = el.getBoundingClientRect();
-						if (r.width < 80 || r.height < 24) return false;
-						const style = getComputedStyle(el);
-						if (style.visibility === "hidden" || style.display === "none") return false;
-						// 视口下半部（composer 固定在底部；hero 居中也在中部以下）
-						return r.top > window.innerHeight * 0.25;
-					});
-				// 可见者优先；没有可见的（窗口极小）就取最后一个（DOM 顺序上靠后的是活跃 composer）
-				return candidates.find((el) => el.offsetParent !== null) ?? candidates[candidates.length - 1] ?? null;
-			};
-			const writeComposer = (composer, text) => {
-				if (composer.tagName === "TEXTAREA" || composer.tagName === "INPUT") {
-					const proto = Object.getPrototypeOf(composer);
-					Object.getOwnPropertyDescriptor(proto, "value").set.call(composer, text);
-					composer.dispatchEvent(new Event("input", { bubbles: true }));
-				} else {
-					composer.focus();
-					composer.textContent = text;
-					composer.dispatchEvent(new Event("input", { bubbles: true }));
-					// contenteditable 常由框架代理——补一个 beforeinput/afterinput 对
-					composer.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, inputType: "insertText", data: text }));
-				}
-			};
 			const optimize = async () => {
-				const composer = findComposer();
-				const draft = composer ? (composer.value ?? composer.textContent ?? '').trim() : '';
+				const composer = findComposerEl();
+				const draft = composer ? (composer.value ?? composer.textContent ?? "").trim() : "";
 				if (draft.length === 0) {
 					setPhase("error");
 					setNote(composer ? "输入框是空的——先写下你的想法，再点优化。" : "未找到输入框——先回到聊天视图再试。");
@@ -1007,14 +1085,8 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				setPhase("busy");
 				setNote("优化中…");
 				try {
-					const r = await fetch("/aipx-hub/optimize", {
-						method: "POST",
-						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ text: draft })
-					});
-					const data = await r.json();
-					if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
-					writeComposer(composer, data.text);
+					const text = await requestOptimize(draft);
+					await writeComposerEl(composer, text);
 					setPhase("done");
 					setNote("已用优化后的提示词替换输入框内容。");
 					setTimeout(() => setNote(null), 4000);
@@ -1032,6 +1104,101 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					title: note ?? "优化输入框中的提示词"
 				}, phase === "busy" ? "✦ …" : "✦ 优化提示词")
 			);
+		}
+		//#endregion
+		//#region lib/client/hero-dock.js
+		/**
+		* Hero fallback mount. The `conversation.composer.dock` projector gates on
+		* `sessionId !== undefined`, so on the new-session hero — where prompt
+		* optimization matters most, before the first message exists — no slot can
+		* render yet. Until dsh ships a hero-composer slot, place the same button
+		* from outside React's tree: fixed-position, anchored to the hero toolbar's
+		* 访问模式 chip, standing down whenever the session dock is present.
+		*/
+		function mountHeroDock() {
+			if (typeof document === "undefined") return;
+			const mount = () => {
+				if (document.querySelector(".apxdsh-heroDock") !== null) return;
+				const host = document.createElement("div");
+				host.className = "apxdsh-heroDock";
+				host.style.cssText = "position:fixed;z-index:6;pointer-events:none;display:none";
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = "apxdsh-dockButton";
+				button.textContent = "✦ 优化提示词";
+				button.title = "优化输入框中的提示词";
+				button.style.pointerEvents = "auto";
+				host.appendChild(button);
+				document.body.appendChild(host);
+				let noteTimer = 0;
+				const flash = (title, ms) => {
+					button.title = title;
+					clearTimeout(noteTimer);
+					noteTimer = setTimeout(() => {
+						button.title = "优化输入框中的提示词";
+						button.textContent = "✦ 优化提示词";
+					}, ms);
+				};
+				button.addEventListener("click", async () => {
+					if (button.disabled) return;
+					const composer = findComposerEl();
+					const draft = composer ? (composer.value ?? composer.textContent ?? "").trim() : "";
+					if (draft.length === 0) {
+						flash(composer ? "输入框是空的——先写下你的想法，再点优化。" : "未找到输入框——先回到聊天视图再试。", 4000);
+						return;
+					}
+					button.disabled = true;
+					button.textContent = "✦ …";
+					try {
+						const text = await requestOptimize(draft);
+						await writeComposerEl(composer, text);
+						button.textContent = "✦ 已替换";
+						flash("已用优化后的提示词替换输入框内容。", 4000);
+					} catch (e) {
+						flash(`优化失败：${e.message}`, 6000);
+					} finally {
+						button.disabled = false;
+					}
+				});
+				// 访问模式 chip 是 hero 工具条上最稳的锚点；找不到就退到输入卡片左下角。
+				// 会话视图由官方 dock 槽位负责——浮层在 .apxdsh-dock 出现时收场。
+				const position = () => {
+					const composer = findComposerEl();
+					if (composer === null || document.querySelector(".apxdsh-dock") !== null) {
+						host.style.display = "none";
+						return;
+					}
+					const cardR = composer.getBoundingClientRect();
+					let chipR = null;
+					for (const b of document.querySelectorAll("button")) {
+						if (!(b.textContent ?? "").includes("工作区内修改")) continue;
+						const r = b.getBoundingClientRect();
+						if (r.width === 0) continue;
+						if (r.top < cardR.top - 40 || r.top > cardR.bottom + 120) continue;
+						chipR = r;
+						break;
+					}
+					const x = chipR === null ? cardR.left : chipR.right + 8;
+					const y = chipR === null ? cardR.bottom + 6 : chipR.top + (chipR.height - 26) / 2;
+					host.style.display = "block";
+					host.style.left = `${String(Math.round(x))}px`;
+					host.style.top = `${String(Math.round(y))}px`;
+				};
+				let raf = 0;
+				const schedule = () => {
+					if (raf !== 0) return;
+					raf = requestAnimationFrame(() => {
+						raf = 0;
+						position();
+					});
+				};
+				new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+				window.addEventListener("resize", schedule);
+				window.addEventListener("scroll", schedule, true);
+				position();
+			};
+			if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+			else mount();
 		}
 		//#endregion
 		//#region lib/client/index.js
@@ -1062,6 +1229,8 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				id: "aipx-prompt-optimize",
 				order: 0
 			}, PromptOptimizeDock));
+			// 官方 dock 槽位只在已打开的会话里投影；hero 首页由这个浮层补位
+			mountHeroDock();
 		}
 		//#endregion
 		exports.apply = apply;
