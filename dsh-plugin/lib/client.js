@@ -1726,11 +1726,14 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		* @param ctx - client root context.
 		*/
 		function apply(ctx) {
-			ctx.slots.inject("settings.plugins.tab", () => ctx.slots.register({
-				name: "settings.plugins.tab",
+			// "工具中枢" as a top-level LEFT-SIDEBAR settings page (settings.section),
+			// per the shell's nav projection — not a tab inside Plugins.
+			ctx.slots.inject("settings.section", () => ctx.slots.register({
+				name: "settings.section",
 				id: "aipx-hub-console",
-				order: 50,
-				label: "工具中枢"
+				order: 20,
+				label: "工具中枢",
+				inject: () => ({})
 			}, HubConsole));
 			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
 				name: "conversation.composer.dock",
