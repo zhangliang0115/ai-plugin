@@ -112,8 +112,9 @@ window.__ModuleLoader__.load({
 		* same-origin fetch is enough — no client remote namespaces involved.
 		*/
 		const BRIDGE_BASE = "/aipx-hub";
-		/** One shot, not a conversation: a stalled bridge answers or gets abandoned. */
-		const REQUEST_TIMEOUT_MS = 8000;
+		/** One shot, not a conversation: a stalled bridge answers or gets abandoned.
+		 * 15s tolerates a first-load downstream (npx -y) boot; the hub caches after. */
+		const REQUEST_TIMEOUT_MS = 15000;
 		/** Playground result cap — mirrors what a model tolerates before skimming. */
 		const SEARCH_LIMIT = 8;
 		/** Tool rows rendered per filter pass; the note under the list explains the cap. */
