@@ -167,6 +167,18 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     return { name, tools: tools.length, status: 'ok' }
   }
 
+  // Restart one downstream: stop its process, then re-list (which respawns it
+  // fresh on the next request) and commit the catalog — for a hung/crashed
+  // server that won't recover on its own but whose config is still valid.
+  async function restartServer(name) {
+    await ensureRefreshed()
+    const d = downstreams.get(name)
+    if (!d) throw new Error(`downstream "${name}" is not registered`)
+    log(`[${name}] restart requested`)
+    try { d.stop?.() } catch {}
+    return refreshServer(name)
+  }
+
   // Serialize + run the index build in the background. Returns null when the
   // catalog is unchanged (keep the current index, per prompt-cache stability).
   // Waits on any prior build so concurrent refresh()/refreshServer() never issue
@@ -260,5 +272,5 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
     }))
   }
 
-  return { refresh, refreshServer, search, call, catalog, ensureCatalog, status, searchEngine, stop }
+  return { refresh, refreshServer, restartServer, search, call, catalog, ensureCatalog, status, searchEngine, stop }
 }

@@ -239,6 +239,11 @@ const HUB_ROUTES = [
   },
   {
     method: 'POST',
+    path: '/aipx-hub/servers/restart',
+    handle: (bridge, body) => bridge.restartServer(body.name),
+  },
+  {
+    method: 'POST',
     path: '/aipx-hub/tools/toggle',
     handle: (bridge, body) => bridge.toggleTool(body.id, body.disabled),
   },

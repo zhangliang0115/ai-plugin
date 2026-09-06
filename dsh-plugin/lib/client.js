@@ -587,6 +587,20 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				setNotice(`已移除 ${name}。`);
 				void onRefresh();
 			};
+			const [restartingName, setRestartingName] = (0, react.useState)(null);
+			const restart = async (name) => {
+				if (restartingName !== null) return;
+				setRestartingName(name);
+				setMutationError(void 0);
+				const answer = await bridgeRequest("/servers/restart", { method: "POST", body: { name } });
+				setRestartingName(null);
+				if (!answer.ok) {
+					setMutationError(`重启失败：${answer.error}。服务器可能仍在运行。`);
+					return;
+				}
+				setNotice(`已重启 ${name}。`);
+				void onRefresh();
+			};
 			return (0, h)("section", { className: "apxdsh-section", "aria-label": "Servers" },
 				(0, h)("div", { className: "apxdsh-sectionHead" },
 					(0, h)("h3", { className: "apxdsh-sectionTitle" }, "Servers"),
@@ -630,6 +644,13 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 									),
 									(0, h)("td", { className: "apxdsh-toolCount" }, row.tools === null ? "—" : String(row.tools)),
 									(0, h)("td", { className: "apxdsh-actionCell" },
+										(0, h)("button", {
+											type: "button",
+											className: "apxdsh-button apxdsh-smallButton",
+											disabled: restartingName !== null,
+											"aria-label": `Restart server ${row.name}`,
+											onClick: () => { void restart(row.name); }
+										}, restartingName === row.name ? "重启中…" : "重启"),
 										(0, h)("button", {
 											type: "button",
 											className: "apxdsh-button apxdsh-dangerButton apxdsh-smallButton",

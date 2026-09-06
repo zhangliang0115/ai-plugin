@@ -335,6 +335,13 @@ export class HubBridge {
     return hub.refresh()
   }
 
+  /** Restart one downstream (stop its process, respawn, re-list tools). */
+  async restartServer(name) {
+    if (typeof name !== 'string' || name === '') throw invalid('server name is required')
+    const hub = await this._ensureHub()
+    return hub.restartServer(name)
+  }
+
   /**
    * Install MCP servers from a free-text source (mcp_install). Accepts a bare
    * command, a JSON def / {mcpServers:{...}} map, a GitHub link, or an npm
