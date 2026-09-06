@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { createHub } from './hub/index.js'
 import { buildSearchIndex } from './hub/search.js'
+import { parseInstallSource, resolveMcpPayload, deriveName } from './hub/install-source.js'
 
 /**
  * Host-side bridge between the dsh web GUI and the aipx MCP hub.
@@ -328,6 +329,53 @@ export class HubBridge {
   async refresh() {
     const hub = await this._ensureHub()
     return hub.refresh()
+  }
+
+  /**
+   * Install MCP servers from a free-text source (mcp_install). Accepts a bare
+   * command, a JSON def / {mcpServers:{...}} map, a GitHub link, or an npm
+   * package; resolves each into mcp-hub.json via normalizeServerDef, then drops
+   * the in-process hub so the next request rebuilds from the fresh file (a
+   * targeted refreshServer would need the new server to be in the hub first).
+   * Returns { installed, skipped } for the caller (model or console) to echo.
+   */
+  async installSource(raw) {
+    const log = (m) => this.log(`install: ${m}`)
+    const desc = parseInstallSource(raw) // throws invalid(400) on unparseable
+    let entries
+    if (desc.kind === 'json') {
+      entries = desc.entries
+    } else if (desc.kind === 'github' || desc.kind === 'local') {
+      entries = await resolveMcpPayload(desc, { log })
+    } else if (desc.kind === 'npm') {
+      entries = [{ name: deriveName(desc), def: { command: 'npx', args: ['-y', desc.pkg], env: {} } }]
+    } else if (desc.kind === 'url') {
+      entries = [{ name: deriveName(desc), def: { url: desc.url } }]
+    } else {
+      entries = [{ name: deriveName(desc), def: { command: desc.command, args: desc.args ?? [], env: {} } }]
+    }
+
+    const config = await this.getConfig()
+    const installed = []
+    const skipped = []
+    for (const { name, def } of entries) {
+      if (name.includes('/') || name === '') {
+        skipped.push({ name: name || '(无名)', reason: '名字含 "/" 或为空' })
+        continue
+      }
+      try {
+        config.servers[name] = normalizeServerDef(def)
+        installed.push(name)
+      } catch (e) {
+        skipped.push({ name, reason: String(e?.message ?? e) })
+      }
+    }
+    if (installed.length === 0) {
+      throw invalid('未能添加任何服务器：' + skipped.map((s) => s.reason).join('；'))
+    }
+    await this._saveConfig(config)
+    await this._disposeHub()
+    return { installed, skipped }
   }
 
   /**

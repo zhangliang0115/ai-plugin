@@ -243,6 +243,24 @@ const HUB_ROUTES = [
     handle: (bridge, body) => bridge.toggleTool(body.id, body.disabled),
   },
   {
+    method: 'GET',
+    path: '/aipx-hub/model-tools',
+    handle: (bridge) => ({
+      tools: buildToolDefs(bridge).map((d) => ({
+        id: `hub/${d.name}`,
+        server: 'hub',
+        name: d.name,
+        description: d.description,
+        inputSchema: d.parameters,
+      })),
+    }),
+  },
+  {
+    method: 'POST',
+    path: '/aipx-hub/install',
+    handle: (bridge, body) => bridge.installSource(body.source),
+  },
+  {
     method: 'POST',
     path: '/aipx-hub/settings',
     handle: (bridge, body) => bridge.setSettings(body.sidecar),
@@ -484,6 +502,28 @@ export function buildToolDefs(bridge) {
       output: stringOutput,
       async execute() {
         return JSON.stringify(await bridge.status(), null, 2)
+      },
+    },
+    {
+      name: 'mcp_install',
+      description:
+        '按 aipx 规范安装 MCP 服务器到 hub。入参 `source` 是用户粘贴的任意内容，可识别：' +
+        '一条 MCP 命令(如 "npx -y @modelcontextprotocol/server-memory")、' +
+        '一个 MCP JSON 定义(单条 {command,args,env}|{url} 或 {mcpServers:{name:def}} 映射)、' +
+        '一个 GitHub 安装链接(owner/repo 或 https://github.com/owner/repo[#path:/sub] 或 git@github.com:owner/repo)、' +
+        '或一个 npm 包名(@scope/pkg)。它识别来源、把服务器写进 ~/.config/aipx/mcp-hub.json、' +
+        '派生安全服务器名、并刷新 hub。返回 {installed:[已加名字], skipped:[{name,reason}]}。' +
+        '调用后把结果回显给用户。',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: '用户要安装的 MCP 命令 / JSON 定义 / GitHub 链接 / npm 包名' },
+        },
+        required: ['source'],
+      },
+      output: stringOutput,
+      async execute(args) {
+        return JSON.stringify(await bridge.installSource(String(args.source ?? '')), null, 2)
       },
     },
   ]

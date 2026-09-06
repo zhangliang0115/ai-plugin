@@ -641,12 +641,9 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 							}))
 						)
 					),
-				(0, h)(AddServerForm, {
+				(0, h)(InstallMcp, {
 					existingNames: rows.map((row) => row.name),
-					onAdded: (name) => {
-						setNotice(`已添加 ${name}。`);
-						void onRefresh();
-					}
+					onAdded: () => { void onRefresh(); }
 				})
 			);
 		}
@@ -1111,6 +1108,75 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		* bridge-not-ready notice — the sections' own tolerant errors would only
 		* repeat the same fact three times.
 		*/
+		function normalizeModelTools(value) {
+			if (typeof value !== "object" || value === null || !Array.isArray(value.tools)) return null;
+			return value.tools
+				.map((tool) => ({
+					id: stringOr(tool?.id, ""),
+					name: stringOr(tool?.name, stringOr(tool?.id, "")),
+					description: stringOr(tool?.description, "")
+				}))
+				.filter((tool) => tool.id.length > 0);
+		}
+		/** The 4 in-process hub meta-tools and the search-then-call loop they teach. */
+		function ModelToolsSection({ data }) {
+			const tools = data.modelTools;
+			const body = tools === null
+				? (0, h)("p", { className: "apxdsh-muted", role: "status" }, data.modelToolsError ?? "加载中…")
+				: tools.length === 0
+					? (0, h)("p", { className: "apxdsh-muted" }, "无")
+					: tools.map((t) => {
+						return (0, h)("div", { key: t.id, className: "apxdsh-result", style: { alignItems: "flex-start" } },
+							(0, h)("div", { className: "apxdsh-resultHead" },
+								(0, h)("code", { className: "apxdsh-toolId" }, t.name),
+								(0, h)("span", { className: "apxdsh-tag" }, "hub")),
+							(0, h)("p", { className: "apxdsh-resultDesc", style: { whiteSpace: "normal" } }, t.description));
+					});
+			return (0, h)("details", { className: "apxdsh-details" },
+				(0, h)("summary", { className: "apxdsh-summary" },
+					(0, h)("span", null, "模型工具"),
+					tools !== null ? (0, h)("span", { className: "apxdsh-summaryMeta" }, `${tools.length} 个内置`) : null),
+				(0, h)("div", { className: "apxdsh-detailsBody" }, body));
+		}
+		/** The free-text "Install MCP" box that replaces the multi-field form. */
+		function InstallMcp({ existingNames, onAdded }) {
+			const [value, setValue] = (0, react.useState)("");
+			const [busy, setBusy] = (0, react.useState)(false);
+			const [error, setError] = (0, react.useState)(void 0);
+			const [notice, setNotice] = (0, react.useState)(void 0);
+			const submit = async (e) => {
+				e.preventDefault();
+				const src = value.trim();
+				if (src === "") { setError("先填入一个 MCP 命令、JSON 定义或安装链接。"); return; }
+				setBusy(true); setError(void 0); setNotice(void 0);
+				const answer = await bridgeRequest("/install", { method: "POST", body: { source: src } });
+				setBusy(false);
+				if (!answer.ok) { setError(`添加失败：${answer.error}`); return; }
+				if (typeof answer.value === "object" && answer.value !== null && answer.value.ok === false) {
+					setError(`添加失败：${stringOr(answer.value.error, "hub 拒绝了该定义")}`); return;
+				}
+				const names = answer.value?.installed ?? [];
+				const skipped = (answer.value?.skipped?.length) ? ` — 跳过 ${answer.value.skipped.map((s) => s.name).join("、")}` : "";
+				setValue(""); setNotice(`已添加：${names.join("、") || "(无)"}${skipped}`);
+				void onAdded();
+			};
+			return (0, h)("form", { className: "apxdsh-form", onSubmit: submit, noValidate: true },
+				(0, h)("label", { className: "apxdsh-label" }, "安装 MCP(粘贴命令 / JSON 定义 / GitHub 链接 / npm 包名)"),
+				(0, h)("textarea", {
+					className: "apxdsh-textarea",
+					value: value,
+					disabled: busy,
+					placeholder: "npx -y @modelcontextprotocol/server-filesystem /tmp\ngithub:owner/repo#path:/dir\n{\"mcpServers\":{\"fs\":{\"command\":\"npx -y @modelcontextprotocol/server-filesystem\"}}}\n@modelcontextprotocol/server-memory",
+					onChange: (e) => { setValue(e.target.value); setError(void 0); setNotice(void 0); }
+				}),
+				error !== void 0 && error !== null ? (0, h)("p", { className: "apxdsh-error", role: "alert" }, error) : null,
+				notice !== void 0 && notice !== null ? (0, h)("p", { className: "apxdsh-savedNotice", role: "status" }, notice) : null,
+				(0, h)("div", { className: "apxdsh-formActions" },
+					(0, h)("button", { type: "submit", className: "apxdsh-button", disabled: busy }, busy ? "安装中…" : "安装"),
+					(0, h)("span", { className: "apxdsh-hint" }, "需要 env/headers 的服务器可在终端用 aipx mcp add 配置。"))
+			);
+		}
+
 		function HubConsole() {
 			const pluginConfig = usePluginConfig();
 			const [data, setData] = (0, react.useState)(() => ({
@@ -1120,7 +1186,9 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				toolsError: null,
 				tools: null,
 				configError: null,
-				config: null
+				config: null,
+				modelToolsError: null,
+				modelTools: null
 			}));
 			const [refreshing, setRefreshing] = (0, react.useState)(false);
 			const requestRef = (0, react.useRef)(0);
@@ -1128,15 +1196,17 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				const requestId = requestRef.current + 1;
 				requestRef.current = requestId;
 				setRefreshing(true);
-				const [statusAnswer, toolsAnswer, configAnswer] = await Promise.all([
+				const [statusAnswer, toolsAnswer, configAnswer, modelToolsAnswer] = await Promise.all([
 					bridgeRequest("/status"),
 					bridgeRequest("/tools"),
-					bridgeRequest("/config")
+					bridgeRequest("/config"),
+					bridgeRequest("/model-tools")
 				]);
 				if (requestRef.current !== requestId) return;
 				const status = statusAnswer.ok ? normalizeStatus(statusAnswer.value) : null;
 				const tools = toolsAnswer.ok ? normalizeTools(toolsAnswer.value) : null;
 				const config = configAnswer.ok ? normalizeConfig(configAnswer.value) : null;
+				const modelTools = modelToolsAnswer.ok ? normalizeModelTools(modelToolsAnswer.value) : null;
 				setData({
 					loaded: true,
 					status: status,
@@ -1144,7 +1214,9 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					tools: tools,
 					toolsError: tools === null ? (toolsAnswer.ok ? "响应里没有 tools 数组——宿主半可能尚未就绪" : toolsAnswer.error) : null,
 					config: config,
-					configError: config === null ? (configAnswer.ok ? "config 响应格式不符合预期" : configAnswer.error) : null
+					configError: config === null ? (configAnswer.ok ? "config 响应格式不符合预期" : configAnswer.error) : null,
+					modelTools: modelTools,
+					modelToolsError: modelTools === null ? (modelToolsAnswer.ok ? "模型工具响应格式不符合预期" : modelToolsAnswer.error) : null
 				});
 				setRefreshing(false);
 			}, []);
@@ -1170,6 +1242,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					? (0, h)(react.Fragment, null,
 						(0, h)(ServersSection, { data: data, onRefresh: refresh }),
 						(0, h)(EngineSection, { data: data, onRefresh: refresh }),
+						(0, h)(ModelToolsSection, { data: data }),
 						(0, h)(ToolsSection, { data: data, onRefresh: refresh }),
 						(0, h)(SearchSection, null)
 					)
