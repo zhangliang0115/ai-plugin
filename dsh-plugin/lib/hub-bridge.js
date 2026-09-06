@@ -317,6 +317,19 @@ export class HubBridge {
     return results
   }
 
+  /** Execute one downstream tool by its "<server>/<tool>" id (mcp_call). */
+  async call(tool, args) {
+    if (typeof tool !== 'string' || tool === '') throw invalid('tool must be a non-empty "<server>/<tool>" id')
+    const hub = await this._ensureHub()
+    return hub.call(tool, args)
+  }
+
+  /** Re-scan the registered servers and rebuild the catalog/index (mcp_refresh). */
+  async refresh() {
+    const hub = await this._ensureHub()
+    return hub.refresh()
+  }
+
   /**
    * Prompt optimization: rewrite the composer draft into a structured
    * high-quality prompt via the DeepSeek API. The key resolution mirrors the

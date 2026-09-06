@@ -145,6 +145,7 @@ export function apply(ctx) {
   })
 
   startHubBridge(ctx)
+  registerHubTools(ctx)
 
   // /prompt-optimize —— 聊天窗快捷命令：把一句模糊需求改写成结构化提示词。
   // 走官方 commands 注入（服务缺失时静默跳过，不影响技能注册）。
@@ -416,6 +417,119 @@ function registerHubRoutes(ctx, webServer) {
       }
     }
     return () => {
+      for (const dispose of disposers) dispose?.()
+      disposers.length = 0
+      void bridge.stop()
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Model-facing tools — register the in-process hub's 4 meta tools on ctx.tools
+// ---------------------------------------------------------------------------
+
+/**
+ * The four meta tools, backed by the in-process hub (the same createHub the
+ * Hub Console uses). The model sees a search-then-call loop — exactly what
+ * `aipx mcp serve` exposes — with no separate MCP server process and no `aipx`
+ * binary. Their descriptions ARE the model's manual, so they must teach the
+ * loop: mcp_search first (returns the id + inputSchema), then mcp_call.
+ */
+export function buildToolDefs(bridge) {
+  return [
+    {
+      name: 'mcp_search',
+      description:
+        'Search EVERY tool across all registered MCP servers (databases, browsers, APIs, …). ' +
+        'Always call this first when you need a capability: it returns matching tool ids, a description, ' +
+        'and the exact inputSchema needed to call it. Then execute with mcp_call.',
+      parameters: {
+        query: { type: 'string', required: true, description: 'Keywords for the capability you need, e.g. "redis get" or "browser screenshot"' },
+        limit: { type: 'number', description: 'Max results (default 8)' },
+      },
+      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      async execute(args) {
+        return JSON.stringify(await bridge.search(String(args.query ?? ''), args.limit ?? 8), null, 2)
+      },
+    },
+    {
+      name: 'mcp_call',
+      description:
+        'Execute a downstream MCP tool. `tool` is the "<server>/<tool>" id from mcp_search results, ' +
+        'and `arguments` must match the inputSchema that mcp_search returned for it.',
+      parameters: {
+        tool: { type: 'string', required: true, description: 'Tool id from mcp_search, in "<server>/<tool>" form' },
+        arguments: { type: 'json', description: 'Arguments matching the tool\'s inputSchema' },
+      },
+      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      async execute(args) {
+        return JSON.stringify(await bridge.call(String(args.tool ?? ''), args.arguments), null, 2)
+      },
+    },
+    {
+      name: 'mcp_status',
+      description: 'List the registered MCP servers with their tool counts, health, and the active search engine.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      async execute() {
+        return JSON.stringify(await bridge.status(), null, 2)
+      },
+    },
+    {
+      name: 'mcp_refresh',
+      description: 'Re-scan all registered MCP servers. Use after servers are added, removed or restarted.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (args, value) => [{ type: 'text', text: String(value) }] },
+      async execute() {
+        return JSON.stringify(await bridge.refresh(), null, 2)
+      },
+    },
+  ]
+}
+
+/**
+ * Register the 4 meta tools on `ctx.tools` when this profile has a tool
+ * registry. `@deepseek-ai/dsh-tools` is dsh-provided, so it is imported
+ * defensively (mirrors the dynamic dsh-llm import in /prompt-optimize): a
+ * resolution failure or a tools-less profile just skips registration — never
+ * blocks the skills/console. The hub backs the tools inside a HubBridge, so
+ * console and model share one hub builder over the same mcp-hub.json.
+ */
+function registerHubTools(ctx) {
+  let tools
+  try {
+    tools = ctx.reflect?.get?.('tools') ?? ctx.tools
+  } catch {
+    return // no tools service in this profile
+  }
+  if (!tools || typeof tools.register !== 'function') return
+
+  const bridge = new HubBridge({ log: (msg) => ctx.logger?.info?.('aipx-tools: %s', msg) })
+  const disposers = []
+  ctx.effect(() => {
+    let cancelled = false
+    import('@deepseek-ai/dsh-tools')
+      .then((mod) => {
+        if (cancelled) return
+        const defineTool = mod?.defineTool
+        if (typeof defineTool !== 'function') {
+          ctx.logger?.info?.('ai-plugin-toolkit: @deepseek-ai/dsh-tools unavailable — skip MCP tool registration')
+          return
+        }
+        for (const spec of buildToolDefs(bridge)) {
+          try {
+            disposers.push(tools.register(defineTool(spec)))
+          } catch (e) {
+            ctx.logger?.warn?.('ai-plugin-toolkit: failed to register tool %s: %o', spec.name, e)
+          }
+        }
+        ctx.logger?.info?.('ai-plugin-toolkit: registered %d in-process hub tool(s)', disposers.length)
+      })
+      .catch((e) => {
+        ctx.logger?.info?.('ai-plugin-toolkit: dsh-tools import failed (%s) — skip MCP tools', e?.code ?? e?.message)
+      })
+    return () => {
+      cancelled = true
       for (const dispose of disposers) dispose?.()
       disposers.length = 0
       void bridge.stop()
