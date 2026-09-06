@@ -18,6 +18,7 @@
     "bin",
     "lib",
     "cordis.patch.yml",
+    "COMPATIBILITY.md",
     "skills"
   ],
   "dsh": {
