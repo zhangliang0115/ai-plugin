@@ -50,7 +50,7 @@ window.__ModuleLoader__.load({
 		* Kept apart from the main sheet purely so this diff stays readable — same
 		* rules apply (apxdsh- prefix, theme aliases, reduced-motion).
 		*/
-		const cssAdd = ".apxdsh-switchRow{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:8px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-switchText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.apxdsh-switchLabel{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);line-height:18px}.apxdsh-switchHint{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:16px}.apxdsh-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}.apxdsh-subOptions{display:flex;flex-direction:column;gap:12px;padding-left:24px;min-width:0}.apxdsh-inlineRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-select{box-sizing:border-box;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-select:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea{box-sizing:border-box;width:100%;min-height:96px;padding:8px 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;resize:vertical}.apxdsh-textarea:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-tplList{display:flex;flex-direction:column;gap:6px;min-width:0}.apxdsh-tplRow{display:flex;align-items:center;gap:8px;padding:6px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-tplName{flex:none;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}.apxdsh-tplPreview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-tertiary)}.apxdsh-activeTag{flex:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:0 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary)}.apxdsh-tplActions{display:flex;gap:6px;flex:none}.apxdsh-spin{width:10px;height:10px;flex:none;display:inline-block;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:apxdsh-spin .8s linear infinite;vertical-align:middle}@keyframes apxdsh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){.apxdsh-spin{animation:none}}";
+		const cssAdd = ".apxdsh-switchRow{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:8px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-switchText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.apxdsh-switchLabel{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);line-height:18px}.apxdsh-switchHint{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:16px}.apxdsh-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}.apxdsh-subOptions{display:flex;flex-direction:column;gap:12px;padding-left:24px;min-width:0}.apxdsh-inlineRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-select{box-sizing:border-box;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-select:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea{box-sizing:border-box;width:100%;min-height:96px;padding:8px 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;resize:vertical}.apxdsh-textarea:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-tplList{display:flex;flex-direction:column;gap:6px;min-width:0}.apxdsh-tplRow{display:flex;align-items:center;gap:8px;padding:6px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-tplName{flex:none;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}.apxdsh-tplPreview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-tertiary)}.apxdsh-activeTag{flex:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:0 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary)}.apxdsh-tplActions{display:flex;gap:6px;flex:none}.apxdsh-spin{width:10px;height:10px;flex:none;display:inline-block;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:apxdsh-spin .8s linear infinite;vertical-align:middle}@keyframes apxdsh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){.apxdsh-spin{animation:none}}.apxdsh-fullscreen{width:100%;max-width:none}";
 		const tagIdAdd = "ai-plugin-toolkit-dsh/HubConsoleAdd.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagIdAdd) + "]") === null) {
 			const tag = document.createElement("style");
@@ -993,11 +993,18 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				),
 				(0, h)("div", { className: "apxdsh-form" },
 					(0, h)(SwitchRow, {
-						label: "MCP 管理（Hub Console）",
-						hint: "Servers / Tool catalog / Search playground 三区块",
+						label: "MCP 中枢",
+						hint: "Servers / 工具目录 / Search 试玩 三区块",
 						checked: config.features.mcpConsole.enabled === true,
 						disabled: busy,
 						onChange: (checked) => void save({ features: { mcpConsole: { enabled: checked } } })
+					}),
+					(0, h)(SwitchRow, {
+						label: "全屏显示",
+						hint: "开启后该面板铺满屏幕,不用每次手动点全屏",
+						checked: config.features.mcpConsole.fullscreen === true,
+						disabled: busy,
+						onChange: (checked) => void save({ features: { mcpConsole: { fullscreen: checked } } })
 					}),
 					(0, h)(SwitchRow, {
 						label: "优化提示词",
@@ -1225,7 +1232,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			}, [refresh]);
 			const bridgeReady = data.loaded && data.statusError === null;
 			const consoleEnabled = pluginConfig.features.mcpConsole.enabled !== false;
-			return (0, h)("div", { className: "apxdsh-root" },
+			return (0, h)("div", { className: "apxdsh-root" + (pluginConfig.features.mcpConsole.fullscreen === true ? " apxdsh-fullscreen" : "") },
 				(0, h)(StatusRow, { data: data, refreshing: refreshing, onRefresh: () => { void refresh(); } }),
 				(0, h)(PluginSettingsSection, null),
 				!data.loaded ? (0, h)("p", { className: "apxdsh-muted", role: "status" }, "Checking the hub bridge…") : null,
@@ -1262,7 +1269,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		const DEFAULT_SYSTEM_PROMPT = "你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。";
 		const DEFAULT_PLUGIN_CONFIG = {
 			features: {
-				mcpConsole: { enabled: true },
+				mcpConsole: { enabled: true, fullscreen: false },
 				promptOptimize: { enabled: true }
 			},
 			promptOptimize: {
@@ -1281,6 +1288,10 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				for (const id of ["mcpConsole", "promptOptimize"]) {
 					const f = features[id];
 					if (typeof f === "object" && f !== null && typeof f.enabled === "boolean") out.features[id].enabled = f.enabled;
+				}
+				if (features.mcpConsole !== null && typeof features.mcpConsole === "object"
+					&& typeof features.mcpConsole.fullscreen === "boolean") {
+					out.features.mcpConsole.fullscreen = features.mcpConsole.fullscreen;
 				}
 			}
 			const po = value.promptOptimize;
@@ -1717,7 +1728,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				name: "settings.plugins.tab",
 				id: "aipx-hub-console",
 				order: 50,
-				label: "Hub Console"
+				label: "MCP 中枢"
 			}, HubConsole));
 			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
 				name: "conversation.composer.dock",

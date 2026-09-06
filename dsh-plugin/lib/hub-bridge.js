@@ -36,7 +36,7 @@ const DEFAULT_SYSTEM_PROMPT =
 
 const DEFAULT_PLUGIN_CONFIG = {
   features: {
-    mcpConsole: { enabled: true },
+    mcpConsole: { enabled: true, fullscreen: false },
     promptOptimize: { enabled: true },
   },
   promptOptimize: {
@@ -80,6 +80,10 @@ export function normalizePluginConfig(raw) {
       if (f !== null && typeof f === 'object' && typeof f.enabled === 'boolean') {
         out.features[id].enabled = f.enabled
       }
+    }
+    if (features.mcpConsole !== null && typeof features.mcpConsole === 'object'
+        && typeof features.mcpConsole.fullscreen === 'boolean') {
+      out.features.mcpConsole.fullscreen = features.mcpConsole.fullscreen
     }
   }
   const po = raw.promptOptimize
