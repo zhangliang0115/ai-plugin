@@ -32,6 +32,8 @@ export class LexicalIndex {
     scored.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     return scored.slice(0, limit)
   }
+
+  stop() {}
 }
 
 /**
@@ -75,6 +77,12 @@ export function withLexicalFallback(primaryFactory, makeLexical, log = () => {})
         degraded = true
         log(`vector search failed (${e.message}) — falling back to lexical scoring`)
         return lexicalIndex().search(query, limit)
+      }
+    },
+    // stop the sidecar (kills the spawned child) so a disposed hub never leaks it
+    stop() {
+      if (primary) {
+        try { primary.stop?.() } catch {}
       }
     },
   }

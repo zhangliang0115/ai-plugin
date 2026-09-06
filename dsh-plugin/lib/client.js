@@ -1163,8 +1163,9 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					setError(`添加失败：${stringOr(answer.value.error, "hub 拒绝了该定义")}`); return;
 				}
 				const names = answer.value?.installed ?? [];
+				const over = (answer.value?.overwritten?.length) ? `（覆盖：${answer.value.overwritten.join("、")}）` : "";
 				const skipped = (answer.value?.skipped?.length) ? ` — 跳过 ${answer.value.skipped.map((s) => s.name).join("、")}` : "";
-				setValue(""); setNotice(`已添加：${names.join("、") || "(无)"}${skipped}`);
+				setValue(""); setNotice(`已添加：${names.join("、") || "(无)"}${over}${skipped}`);
 				void onAdded();
 			};
 			return (0, h)("form", { className: "apxdsh-form", onSubmit: submit, noValidate: true },

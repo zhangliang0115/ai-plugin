@@ -238,6 +238,10 @@ export function createHub({ servers, log = () => {}, downstreamFactory, searchIn
 
   async function stop() {
     for (const d of downstreams.values()) d.stop()
+    // stop the search index too (a sidecar child would otherwise survive 180s)
+    if (index && typeof index.stop === 'function') {
+      try { index.stop() } catch {}
+    }
   }
 
   // the engine that served the last build — surfaced via mcp_status

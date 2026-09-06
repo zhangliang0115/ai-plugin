@@ -474,7 +474,8 @@ export function buildToolDefs(bridge) {
       },
       output: stringOutput,
       async execute(args) {
-        return JSON.stringify(await bridge.search(String(args.query ?? ''), args.limit ?? 8), null, 2)
+        if (typeof args?.query !== 'string' || args.query.trim() === '') throw new Error('missing required argument: query (string)')
+        return JSON.stringify(await bridge.search(args.query, args.limit ?? 8), null, 2)
       },
     },
     {
@@ -492,7 +493,8 @@ export function buildToolDefs(bridge) {
       },
       output: stringOutput,
       async execute(args) {
-        return JSON.stringify(await bridge.call(String(args.tool ?? ''), args.arguments), null, 2)
+        if (typeof args?.tool !== 'string' || args.tool.trim() === '') throw new Error('missing required argument: tool (string)')
+        return JSON.stringify(await bridge.call(args.tool, args.arguments), null, 2)
       },
     },
     {
@@ -523,7 +525,8 @@ export function buildToolDefs(bridge) {
       },
       output: stringOutput,
       async execute(args) {
-        return JSON.stringify(await bridge.installSource(String(args.source ?? '')), null, 2)
+        if (typeof args?.source !== 'string' || args.source.trim() === '') throw new Error('missing required argument: source (string)')
+        return JSON.stringify(await bridge.installSource(args.source), null, 2)
       },
     },
   ]

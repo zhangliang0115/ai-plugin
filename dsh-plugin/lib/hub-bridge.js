@@ -361,6 +361,7 @@ export class HubBridge {
 
     const config = await this.getConfig()
     const installed = []
+    const overwritten = []
     const skipped = []
     for (const { name, def } of entries) {
       if (name.includes('/') || name === '') {
@@ -368,8 +369,10 @@ export class HubBridge {
         continue
       }
       try {
+        const was = Object.prototype.hasOwnProperty.call(config.servers, name)
         config.servers[name] = normalizeServerDef(def)
         installed.push(name)
+        if (was) overwritten.push(name)
       } catch (e) {
         skipped.push({ name, reason: String(e?.message ?? e) })
       }
@@ -379,7 +382,7 @@ export class HubBridge {
     }
     await this._saveConfig(config)
     await this._disposeHub()
-    return { installed, skipped }
+    return { installed, skipped, overwritten }
   }
 
   /**
