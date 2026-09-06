@@ -3,6 +3,32 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning: [SemVer](https://semver.org/).
 
+## [0.6.0] — 2026-09-06
+
+### Added
+
+- **dsh-plugin「工具中枢」**(原 MCP 中枢)：定位为 aipx 工具全家桶 — skills / prompt-optimize / MCP 工具中枢 / 未来更多。
+- **自由输入框安装 MCP**：`mcp_install` 模型工具(内置规范提示词)，识别 GitHub 链接 / MCP JSON / npm 包 / 裸命令，写入 `mcp-hub.json` 后刷新，回显 `{installed, skipped, overwritten}`。
+- **模型工具区块**(Console 可见 4 个内置工具描述)，`mcp_status` 以外每个工具有启用/禁用开关。
+- **MCP 服务器重启**：每台服务器的「重启」按钮(`hub.restartServer`：停进程→重新拉活→提交 catalog)。
+- **工具中枢二级导航(左侧竖排目录)**：MCP 服务器 / 工具目录 / 搜索引擎 / 模型工具 / 插件设置。
+- **设置全屏**：用自定义插件 CSS 让 dsh 整体设置模态框全屏(`.VOzbGW_panel` 覆盖,按构建哈希,升级需重取)。
+
+### Changed
+
+- **hub 改进程内 + 自带 serve**：不再依赖 `aipx mcp serve` 命令/`npx`，dsh 插件自给自足。
+- **模型工具改手搓 ToolDefinition 注册**(修复 `@deepseek-ai/dsh-tools` import 解析失败)。
+- **配置写法**：`aipx mcp sync` 支持 Reasonix TOML-array-of-tables、远端 url 跳过、OpenCode 只读。
+- **工具入参校验** + `stop()` 停索引防侧车泄漏 + 安装覆盖检测。
+- **Console 排版**：填满宽度 1600px + 响应式网格 + 宽分区跨整行。
+- 前端桥接超时 8s→15s(覆盖首次 npx 下游启动)。
+
+### Fixed
+
+- **P2(console Bridge unreachable)**：`refresh()` 先交换 catalog、索引后台建(不再被 zvec embedding 下载阻塞)。
+- **自动定向刷新**：监听 `tools/list_changed` 通知 → 只重刷该服,不整库重建。
+- dsh 设置全屏误实现导致的布局重叠(已回退为注入 `.VOzbGW_panel` 覆盖)。
+
 ## [0.5.2] — 2026-09-05
 
 ### Added
