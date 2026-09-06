@@ -20,6 +20,11 @@ export class HttpDownstream {
     this.ready = false
     this.lastError = null
     this.nextId = 1
+    // Push notifications (e.g. tools/list_changed) arrive over a persistent SSE
+    // stream this client does not keep open — so onToolsChanged is never fired
+    // for HTTP yet. The hub still sets it (harmless); HTTP servers rely on the
+    // manual re-scan escape hatch instead.
+    this.onToolsChanged = null
   }
 
   _headers() {

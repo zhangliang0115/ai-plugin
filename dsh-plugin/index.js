@@ -486,15 +486,6 @@ export function buildToolDefs(bridge) {
         return JSON.stringify(await bridge.status(), null, 2)
       },
     },
-    {
-      name: 'mcp_refresh',
-      description: 'Re-scan all registered MCP servers. Use after servers are added, removed or restarted.',
-      parameters: noArgs,
-      output: stringOutput,
-      async execute() {
-        return JSON.stringify(await bridge.refresh(), null, 2)
-      },
-    },
   ]
 }
 

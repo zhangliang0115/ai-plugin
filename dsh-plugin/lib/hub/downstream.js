@@ -22,6 +22,9 @@ export class StdioDownstream {
     this.nextId = 1
     this.ready = false
     this.lastError = null
+    // Fired when the server pushes `notifications/tools/list_changed` (its tool
+    // list changed without the hub asking) — the hub re-syncs just this server.
+    this.onToolsChanged = null
   }
 
   _spawn() {
@@ -62,6 +65,13 @@ export class StdioDownstream {
         clearTimeout(entry.timer)
         if (msg.error) entry.reject(new Error(msg.error.message ?? JSON.stringify(msg.error)))
         else entry.resolve(msg.result)
+        continue
+      }
+      // server-initiated notification (no id): tools/list_changed means the
+      // server's tool list changed on its own — let the hub re-sync this server
+      if (msg.id === undefined && msg.method === 'notifications/tools/list_changed') {
+        this.log(`[${this.name}] tool list changed — hub will re-sync`)
+        this.onToolsChanged?.()
       }
     }
   }
