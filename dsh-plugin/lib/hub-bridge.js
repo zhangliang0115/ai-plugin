@@ -36,7 +36,7 @@ const DEFAULT_SYSTEM_PROMPT =
 
 const DEFAULT_PLUGIN_CONFIG = {
   features: {
-    mcpConsole: { enabled: true, fullscreen: false },
+    mcpConsole: { enabled: true, fullscreen: true },
     promptOptimize: { enabled: true },
   },
   promptOptimize: {

@@ -1001,8 +1001,8 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 						onChange: (checked) => void save({ features: { mcpConsole: { enabled: checked } } })
 					}),
 					(0, h)(SwitchRow, {
-						label: "面板宽屏",
-						hint: "开启后「工具中枢」面板填满设置内容区；注意 dsh 整个设置窗口的全屏由 dsh 外壳控制，非本插件能决定",
+						label: "设置全屏",
+						hint: "开启后,点开 dsh 设置即为全屏(不再局限 800px 小窗)",
 						checked: config.features.mcpConsole.fullscreen === true,
 						disabled: busy,
 						onChange: (checked) => void save({ features: { mcpConsole: { fullscreen: checked } } })
@@ -1188,6 +1188,23 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 
 		function HubConsole() {
 			const pluginConfig = usePluginConfig();
+			// Full-screen the WHOLE dsh settings modal (the shell's 800px panel) when the
+			// flag is on. The .VOzbGW_panel class is dsh's CSS-module hash — stable per dsh
+			// build (re-derive it on a dsh upgrade). Injecting a global rule from our plugin
+			// is the everything-is-a-plugin path to override dsh's shell chrome.
+			(0, react.useEffect)(() => {
+				const on = pluginConfig.features.mcpConsole.fullscreen === true;
+				const q = () => (typeof document !== "undefined" ? document.querySelector("style[data-apxdsh-settings-fs]") : null);
+				if (on && q() === null) {
+					const el = document.createElement("style");
+					el.dataset.apxdshSettingsFs = "";
+					el.textContent = ".VOzbGW_panel{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;border-radius:0!important}";
+					document.head.appendChild(el);
+				} else if (!on) {
+					const el = q(); if (el) el.remove();
+				}
+				return () => { const el = q(); if (el) el.remove(); };
+			}, [pluginConfig.features.mcpConsole.fullscreen]);
 			const [data, setData] = (0, react.useState)(() => ({
 				loaded: false,
 				statusError: null,
@@ -1271,7 +1288,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		const DEFAULT_SYSTEM_PROMPT = "你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。";
 		const DEFAULT_PLUGIN_CONFIG = {
 			features: {
-				mcpConsole: { enabled: true, fullscreen: false },
+				mcpConsole: { enabled: true, fullscreen: true },
 				promptOptimize: { enabled: true }
 			},
 			promptOptimize: {
