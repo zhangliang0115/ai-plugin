@@ -26,6 +26,14 @@ Then replace your agent's long MCP server list with a single entry:
 { "mcpServers": { "aipx": { "command": "aipx", "args": ["mcp", "serve"] } } }
 ```
 
+**Self-hosted (no `aipx` CLI needed):** the dsh bundle ships its own serve
+entrypoint — `dsh-plugin/bin/hub-serve.js` — with the exact same stdio contract.
+Point an MCP server at it instead and you don't need the `aipx` package or npx:
+`{"command":"aipx-hub-serve"}` (if the bundle's bin is on PATH, or
+`{"command":"node","args":["<path>/hub-serve.js"]}`). In the dsh web profile the
+Hub Console runs the hub in-process already — only the model-facing endpoint
+needs this entry registered.
+
 Hub config lives at `~/.config/aipx/mcp-hub.json` (override with
 `AIPX_CONFIG_DIR`) — a plain `{"servers": {name: {command, args, env}}}` map
 you can edit by hand.

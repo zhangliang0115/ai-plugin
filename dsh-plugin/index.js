@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { HubBridge } from './lib/hub-bridge.js'
+import { HubBridge, messageText } from './lib/hub-bridge.js'
 
 export const name = 'ai-plugin-toolkit'
 // `webserver` is provided by dsh-web-app only; on tui/headless profiles the
@@ -10,6 +10,27 @@ export const name = 'ai-plugin-toolkit'
 export const inject = ['skills']
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Fallback rewrite rule for /prompt-optimize when the plugin config is
+ * unreachable (no web profile, config unreadable). Kept identical in intent
+ * to the bridge's DEFAULT_SYSTEM_PROMPT — the command and the dock must never
+ * diverge on the rules they apply.
+ */
+const DEFAULT_PROMPT_OPTIMIZE_RULE = [
+  '请把下面的「原始需求」改写成一个高质量提示词。要求：',
+  '1. 明确目标与预期产出物；',
+  '2. 补全必要上下文与约束，不确定之处以「假设：…」列出；',
+  '3. 按 目标 / 背景 / 要求 / 产出格式 分节，输出可直接复制使用；',
+  '4. 只输出改写后的提示词，不要执行这个需求。',
+].join('\n')
+
+/**
+ * The single HubBridge created by registerHubRoutes, kept so the
+ * /prompt-optimize command reuses the same plugin config as the web dock.
+ * null until a web server is present in this profile.
+ */
+let hubBridge = null
 
 /**
  * The bundled skill folders. `skills/` next to index.js is what `dsh plugin
@@ -127,6 +148,7 @@ export function apply(ctx) {
 
   // /prompt-optimize —— 聊天窗快捷命令：把一句模糊需求改写成结构化提示词。
   // 走官方 commands 注入（服务缺失时静默跳过，不影响技能注册）。
+  // 改写规则与网页 dock 共用同一份插件配置（lib/hub-bridge.js 的 plugin config）。
   try {
     ctx.inject(['commands'], (commandCtx) => {
       commandCtx.commands.register({
@@ -138,26 +160,35 @@ export function apply(ctx) {
           if (raw.length === 0) {
             return { kind: 'error', text: '用法：/prompt-optimize <原始需求>，例如 /prompt-optimize 帮我写个爬虫' }
           }
-          const composed = [
-            '请把下面的「原始需求」改写成一个高质量提示词。要求：',
-            '1. 明确目标与预期产出物；',
-            '2. 补全必要上下文与约束，不确定之处以「假设：…」列出；',
-            '3. 按 目标 / 背景 / 要求 / 产出格式 分节，输出可直接复制使用；',
-            '4. 只输出改写后的提示词，不要执行这个需求。',
-            '',
-            `原始需求：${raw}`,
-          ].join('\n')
           const agent = invocation.agent
+          if (agent === undefined) {
+            return { kind: 'error', text: '当前上下文没有可代理的 agent' }
+          }
+          // 有效规则来自插件配置（active 模板 > systemPrompt > 内置默认）；
+          // 读不到配置时回退到与桥接 optimize 一致的默认文案。
+          const loader = hubBridge !== null && typeof hubBridge.getPluginConfig === 'function'
+            ? hubBridge.getPluginConfig()
+            : Promise.resolve(null)
           Promise.resolve()
             .then(async () => {
-              let message
+              let rule
               try {
-                const { createUserMessage } = await import('@deepseek-ai/dsh-llm')
-                message = createUserMessage({ content: [{ type: 'text', text: composed }], source: { kind: 'user' } })
+                const config = await loader
+                const po = config?.promptOptimize
+                const active = Array.isArray(po?.templates) ? po.templates.find((t) => t?.active === true) : undefined
+                rule = active?.content ?? po?.systemPrompt ?? null
               } catch {
-                message = { role: 'user', content: [{ type: 'text', text: composed }], source: { kind: 'user' } }
+                rule = null
               }
-              agent.steer(message)
+              if (rule === null || rule === '') rule = DEFAULT_PROMPT_OPTIMIZE_RULE
+              const composed = rule.includes('{{input}}')
+                ? rule.split('{{input}}').join(raw)
+                : `${rule}\n\n原始需求：${raw}`
+              const { createUserMessage } = await import('@deepseek-ai/dsh-llm').catch(() => ({ createUserMessage: null }))
+              const message = createUserMessage === null
+                ? { role: 'user', content: [{ type: 'text', text: composed }], source: { kind: 'user' } }
+                : createUserMessage({ content: [{ type: 'text', text: composed }], source: { kind: 'user' } })
+              await agent.steer(message)
             })
             .catch((e) => {
               commandCtx.logger?.warn?.('prompt-optimize steer failed: %o', e)
@@ -169,8 +200,6 @@ export function apply(ctx) {
   } catch {
     // commands 服务不可用的 profile 上跳过命令注册
   }
-
-  startHubBridge(ctx)
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +216,21 @@ const HUB_ROUTES = [
   { method: 'GET', path: '/aipx-hub/tools', handle: (bridge, body, query) => bridge.tools(query.limit) },
   { method: 'POST', path: '/aipx-hub/search', handle: (bridge, body) => bridge.search(body.query ?? '', body.limit) },
   { method: 'GET', path: '/aipx-hub/config', handle: (bridge) => bridge.getConfig() },
-  { method: 'POST', path: '/aipx-hub/optimize', handle: (bridge, body) => bridge.optimize(body.text) },
+  { method: 'POST', path: '/aipx-hub/optimize', handle: (bridge, body) => bridge.optimize(body.text, body.sessionId, body.model) },
+  { method: 'GET', path: '/aipx-hub/model-catalog', handle: (bridge) => bridge.modelCatalog() },
+  // The webserver claims exact paths, so GET+POST share ONE registration; the
+  // handler switches on the method (ANY short-circuits the 405 guard).
+  {
+    method: 'ANY',
+    path: '/aipx-hub/plugin-config',
+    handle: (bridge, body, query, req) => {
+      if (req.method === 'GET') return bridge.getPluginConfig()
+      if (req.method === 'POST') return bridge.setPluginConfig(body)
+      const e = new Error('use GET or POST /aipx-hub/plugin-config')
+      e.status = 405
+      throw e
+    },
+  },
   {
     method: 'POST',
     path: '/aipx-hub/servers',
@@ -246,15 +289,15 @@ async function readJsonBody(req) {
  */
 function makeHubHandler(bridge, route) {
   return async (req, res) => {
-    if (req.method !== route.method) {
+    if (route.method !== 'ANY' && req.method !== route.method) {
       res.writeHead(405, { allow: route.method, 'content-type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ error: `use ${route.method} ${route.path}` }))
       return
     }
     try {
-      const body = route.method === 'POST' ? await readJsonBody(req) : {}
+      const body = req.method === 'POST' ? await readJsonBody(req) : {}
       const query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
-      sendJson(res, 200, await route.handle(bridge, body, query))
+      sendJson(res, 200, await route.handle(bridge, body, query, req))
     } catch (e) {
       sendJson(res, typeof e?.status === 'number' ? e.status : 500, { error: String(e?.message ?? e) })
     }
@@ -292,7 +335,75 @@ function startHubBridge(ctx) {
 
 function registerHubRoutes(ctx, webServer) {
 
-  const bridge = new HubBridge({ log: (msg) => ctx.logger.info('aipx-hub: %s', msg) })
+  const bridge = new HubBridge({
+    log: (msg) => ctx.logger.info('aipx-hub: %s', msg),
+    // 模型目录：与 composer 模型选择器同源（llm 服务的 provider/model 视图），
+    // 供设置页「优化所用模型」下拉动态渲染。llm 缺席（tui/headless）时返回
+    // 空目录，面板退化为静态预设。
+    getModelCatalog: async () => {
+      let llm
+      let defaultSelection = null
+      try {
+        llm = ctx.reflect?.get?.('llm') ?? ctx.llm
+      } catch {
+        return { groups: [], default: null }
+      }
+      try {
+        defaultSelection = ctx.reflect?.get?.('agentDefaultModel')?.currentSelection?.() ?? null
+      } catch {
+        defaultSelection = null
+      }
+      if (!llm || typeof llm.listProviders !== 'function') return { groups: [], default: defaultSelection }
+      const providers = llm.listProviders()
+      const groups = await Promise.all(providers.map(async (provider) => {
+        try {
+          const models = await llm.listModels(provider.id)
+          return {
+            id: provider.id,
+            name: provider.name,
+            models: models.map((model) => ({ id: model.id, name: model.name })),
+          }
+        } catch (e) {
+          ctx.logger?.warn?.('aipx-hub: model catalog for %s failed: %o', provider.id, e)
+          return { id: provider.id, name: provider.name, models: [] }
+        }
+      }))
+      return { groups: groups.filter((group) => group.models.length > 0), default: defaultSelection }
+    },
+    // contextMode "session": resolve the current session's recent turns for
+    // the optimize call. Lazy service lookup (web profiles only; sessionQuery
+    // is provided by the persisted-session plugin) — any failure degrades to
+    // input-only because the bridge catches and logs independently.
+    loadSessionContext: async (sessionId) => {
+      try {
+        let query
+        try {
+          query = ctx.reflect?.get?.('sessionQuery') ?? ctx.sessionQuery
+        } catch {
+          return null
+        }
+        if (!query || typeof query.readSurface !== 'function') return null
+        const surface = await query.readSurface(String(sessionId))
+        const events = Array.isArray(surface?.events) ? surface.events : []
+        if (events.length === 0) return null
+        const mod = await import('@deepseek-ai/dsh-session/surface')
+        const derive = mod?.deriveEventMessage ?? mod?.default?.deriveEventMessage
+        if (typeof derive !== 'function') return null
+        const turns = []
+        for (const event of events) {
+          const message = derive(event)
+          const text = messageText(message)
+          if (text === '') continue
+          turns.push({ role: message.role === 'assistant' ? 'assistant' : 'user', content: text })
+        }
+        return turns.length > 0 ? turns : null
+      } catch (e) {
+        ctx.logger.warn('aipx-hub: session context read failed (%s): %o', sessionId, e)
+        return null
+      }
+    },
+  })
+  hubBridge = bridge
   const disposers = []
 
   ctx.effect(() => {

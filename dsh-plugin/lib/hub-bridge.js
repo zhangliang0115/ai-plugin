@@ -1,30 +1,189 @@
-import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { createHub } from './hub/index.js'
+import { buildSearchIndex } from './hub/search.js'
 
 /**
  * Host-side bridge between the dsh web GUI and the aipx MCP hub.
  *
- * Two channels, split by what they touch:
- * - live queries (status / tool catalog / search) go through a lazily spawned
- *   `aipx mcp serve` child over newline-delimited JSON-RPC — exactly what an
- *   agent client sees, so the console can never show a divergent view;
+ * The hub runs IN-PROCESS (createHub from ./hub/) so the dsh bundle needs no
+ * `aipx mcp serve` child and no `aipx`/npx dependency. Two channels:
+ * - live queries (status / tool catalog / search) call the in-process hub
+ *   directly — the same createHub the `aipx mcp serve` CLI builds, so the
+ *   console shows the same view an agent client would;
  * - configuration (get / add / remove) reads and writes `mcp-hub.json`
  *   directly (atomic rename), because the running hub holds no config API —
- *   a change drops the child and the next request respawns on the fresh file.
+ *   a change disposes the in-process hub and the next request rebuilds it
+ *   from the fresh file (stopping spawned downstream processes first).
  *
- * Zero dependencies; child plumbing mirrors src/hub/downstream.js.
+ * Zero dependencies.
  */
 
-const PROTOCOL_VERSION = '2024-11-05'
-const REQUEST_TIMEOUT_MS = 30_000
-const SEARCH_TIMEOUT_MS = 15_000
 const DEFAULT_TOOLS_LIMIT = 100
 const SEARCH_DEFAULT_LIMIT = 8
-// the hub answers initialize but never reads clientInfo — placeholder version
-const CLIENT_INFO = { name: 'ai-plugin-toolkit-dsh', version: '0.0.0' }
+
+// ---------------------------------------------------------------------------
+// Plugin feature config (~/.config/aipx/ai-plugin-toolkit.json, or beside a
+// custom mcp-hub.json). Features default ON; a missing/corrupt file reads as
+// defaults — the plugin must never fail to load because of its own settings.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_SYSTEM_PROMPT =
+  '你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。'
+
+const DEFAULT_PLUGIN_CONFIG = {
+  features: {
+    mcpConsole: { enabled: true },
+    promptOptimize: { enabled: true },
+  },
+  promptOptimize: {
+    showLabel: false,
+    model: 'follow',
+    contextMode: 'input',
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
+    templates: [],
+  },
+}
+
+/** The plugin feature config file, next to the mcp-hub.json being managed. */
+function pluginConfigPathFor(configPath) {
+  return path.join(path.dirname(configPath), 'ai-plugin-toolkit.json')
+}
+
+/**
+ * Same resolution order as the aipx CLI itself (src/util.js configDir), for
+ * the default mcp-hub.json — and therefore for the plugin config beside it.
+ */
+function defaultConfigPath() {
+  const base =
+    process.env.AIPX_CONFIG_DIR ??
+    path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'aipx')
+  return path.join(base, 'mcp-hub.json')
+}
+
+/**
+ * Accept any parsed JSON (a stored file, a client PATCH) and return a complete,
+ * type-checked plugin config. Unknown keys are dropped, wrong-typed fields fall
+ * back to defaults. `templates` is replaced wholesale; at most one template is
+ * active (first one wins, later marked inactive).
+ */
+export function normalizePluginConfig(raw) {
+  const out = JSON.parse(JSON.stringify(DEFAULT_PLUGIN_CONFIG))
+  if (raw === null || typeof raw !== 'object') return out
+  const features = raw.features
+  if (features !== null && typeof features === 'object') {
+    for (const id of ['mcpConsole', 'promptOptimize']) {
+      const f = features[id]
+      if (f !== null && typeof f === 'object' && typeof f.enabled === 'boolean') {
+        out.features[id].enabled = f.enabled
+      }
+    }
+  }
+  const po = raw.promptOptimize
+  if (po !== null && typeof po === 'object') {
+    if (typeof po.showLabel === 'boolean') out.promptOptimize.showLabel = po.showLabel
+    if (typeof po.model === 'string' && po.model.trim() !== '' && po.model.length <= 128) {
+      out.promptOptimize.model = po.model.trim()
+    }
+    if (po.contextMode === 'input' || po.contextMode === 'session') out.promptOptimize.contextMode = po.contextMode
+    if (typeof po.systemPrompt === 'string' && po.systemPrompt.length <= 8000) out.promptOptimize.systemPrompt = po.systemPrompt
+    if (Array.isArray(po.templates)) {
+      const templates = []
+      for (const t of po.templates) {
+        if (t === null || typeof t !== 'object') continue
+        if (typeof t.id !== 'string' || t.id === '' || t.id.length > 64) continue
+        if (typeof t.name !== 'string' || t.name === '' || t.name.length > 64) continue
+        if (typeof t.content !== 'string' || t.content.length === 0 || t.content.length > 8000) continue
+        templates.push({ id: t.id, name: t.name, content: t.content, active: t.active === true })
+      }
+      if (templates.length > 0) {
+        let seen = false
+        for (const t of templates) {
+          if (t.active) {
+            t.active = !seen
+            seen = true
+          }
+        }
+        out.promptOptimize.templates = templates
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Merge a PATCH onto the current config: PATCHes may carry `features` and/or
+ * `promptOptimize`, each partial. Lists (templates) are replaced wholesale
+ * when present; everything else is overlaid field-by-field so a small patch
+ * never resets unrelated settings.
+ */
+function mergePluginPatch(current, patch) {
+  const out = JSON.parse(JSON.stringify(current ?? DEFAULT_PLUGIN_CONFIG))
+  if (patch === null || typeof patch !== 'object') return out
+  if (patch.features !== null && typeof patch.features === 'object') {
+    for (const id of ['mcpConsole', 'promptOptimize']) {
+      const f = patch.features[id]
+      if (f !== null && typeof f === 'object') out.features[id] = { ...out.features[id], ...f }
+    }
+  }
+  if (patch.promptOptimize !== null && typeof patch.promptOptimize === 'object') {
+    const p = patch.promptOptimize
+    out.promptOptimize = {
+      ...out.promptOptimize,
+      ...p,
+      templates: Array.isArray(p.templates) ? p.templates : out.promptOptimize.templates,
+    }
+  }
+  return out
+}
+
+/** The effective rewrite prompt: active template > saved systemPrompt > built-in default. */
+function effectivePrompt(po) {
+  const active = Array.isArray(po?.templates) ? po.templates.find((t) => t?.active === true) : undefined
+  if (active && typeof active.content === 'string' && active.content !== '') return active.content
+  if (typeof po?.systemPrompt === 'string' && po.systemPrompt !== '') return po.systemPrompt
+  return DEFAULT_SYSTEM_PROMPT
+}
+
+/** Flatten one dsh-llm Message to plain text (content may be a part array). */
+export function messageText(message) {
+  const content = message?.content
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((part) => (typeof part === 'string' ? part : part?.type === 'text' && typeof part?.text === 'string' ? part.text : ''))
+    .filter((text) => text !== '')
+    .join('\n')
+    .trim()
+}
+
+/**
+ * Build the chat messages for one optimize call. Pure (no I/O) so the rules are
+ * testable; `history` is [{role: 'user'|'assistant', content: text}] from the
+ * current session (already capped/truncated by the caller), and a prompt that
+ * contains `{{input}}` gets the draft substituted in place of a user message.
+ */
+export function buildOptimizeMessages(config, text, history) {
+  const po = config?.promptOptimize ?? DEFAULT_PLUGIN_CONFIG.promptOptimize
+  const prompt = effectivePrompt(po)
+  const messages = [{ role: 'system', content: prompt }]
+  for (const turn of Array.isArray(history) ? history.slice(-6) : []) {
+    if (turn === null || typeof turn !== 'object') continue
+    const role = turn.role === 'assistant' ? 'assistant' : 'user'
+    const content = String(turn.content ?? '')
+    if (content === '') continue
+    messages.push({ role, content: content.length > 2000 ? `${content.slice(0, 2000)}…` : content })
+  }
+  const input = String(text ?? '')
+  if (prompt.includes('{{input}}')) {
+    messages[0] = { role: 'system', content: prompt.split('{{input}}').join(input) }
+  } else {
+    messages.push({ role: 'user', content: input })
+  }
+  return messages
+}
 
 /**
  * The full-catalog query behind tools(). The hub's lexical index answers an
@@ -33,14 +192,6 @@ const CLIENT_INFO = { name: 'ai-plugin-toolkit-dsh', version: '0.0.0' }
  * description matches enough of them to score positive, and the caller's
  * limit caps the result.
  */
-
-/** Same resolution order as the aipx CLI itself (src/util.js configDir). */
-function defaultConfigPath() {
-  const base =
-    process.env.AIPX_CONFIG_DIR ??
-    path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'aipx')
-  return path.join(base, 'mcp-hub.json')
-}
 
 /** A caller mistake, not a hub failure — the HTTP layer maps `status` to the response code. */
 function invalid(message) {
@@ -86,68 +237,82 @@ function normalizeServerDef(def) {
   throw invalid('server definition needs a non-empty "command" (stdio) or "url" (http)')
 }
 
-function parseJsonReply(text, tool) {
-  try {
-    return JSON.parse(text)
-  } catch {
-    throw new Error(`mcp_${tool} returned non-JSON output: ${String(text).slice(0, 200)}`)
-  }
-}
-
 export class HubBridge {
   /**
    * @param {string} [configPath] - the mcp-hub.json to manage; defaults to the
    *   aipx CLI's resolution (AIPX_CONFIG_DIR || $XDG_CONFIG_HOME/aipx || ~/.config/aipx).
    * @param {(msg: string) => void} [log] - hub stderr and lifecycle diagnostics.
+   * @param {(sessionId: string) => Promise<Array<{role, content}>|null>} [loadSessionContext]
+   *   - optional resolver for the current session's recent turns (contextMode
+   *   "session"); a null/throw answer degrades the call to input-only mode.
    */
-  constructor({ configPath, log } = {}) {
+  constructor({ configPath, log, loadSessionContext, getModelCatalog } = {}) {
     this.configPath = configPath ?? defaultConfigPath()
+    this.pluginConfigPath = pluginConfigPathFor(this.configPath)
     this.log = log ?? (() => {})
-    this.child = null
-    this.ready = false
-    this.startPromise = null
-    this.buffer = ''
-    this.pending = new Map()
-    this.nextId = 1
+    this.loadSessionContext = typeof loadSessionContext === 'function' ? loadSessionContext : null
+    this.getModelCatalog = typeof getModelCatalog === 'function' ? getModelCatalog : null
+    this.catalogCache = null
+    // in-process hub: the createHub instance, its single-flight build promise,
+    // and the generation counter that lets tests/watchdog see a rebuild
+    this.hub = null
+    this.hubPromise = null
+    this.hubGen = 0
+  }
+
+  /**
+   * Host-side model catalog — the same provider/model view the composer's
+   * model selector shows (ctx.llm), so the settings dropdown can mirror it
+   * even though the client-side `remote` face is not granted to external
+   * plugins. Cached 5 min: listModels may hit the provider API.
+   */
+  async modelCatalog() {
+    if (this.getModelCatalog === null) return { groups: [] }
+    if (this.catalogCache !== null && Date.now() - this.catalogCache.at < 5 * 60_000) return this.catalogCache.value
+    const value = await this.getModelCatalog()
+    this.catalogCache = { at: Date.now(), value }
+    return value
   }
 
   /**
    * Live hub status: { running: true, pid, servers: [{name, ready, lastError,
-   * tools}] } — mcp_status's rows wrapped with the child's liveness.
+   * tools}] } — hub.status() rows wrapped with the host process's pid (the
+   * console shows "pid NNN"; the dot is driven by `running`).
    */
   async status() {
-    const child = await this._ensure()
-    const text = await this._callTool('mcp_status')
-    const payload = parseJsonReply(text, 'status')
-    // mcp_status returns {servers: [...rows], searchEngine}; older builds sent
-    // a bare rows array — both read as a name-keyed map for the console
-    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.servers) ? payload.servers : []
+    const hub = await this._ensureHub()
+    // hub.status() returns rows [{name, ready, lastError, tools}] — map to the
+    // name-keyed shape the console renders (client.js consumes running/pid)
     const servers = {}
-    for (const entry of list) {
+    for (const entry of hub.status() ?? []) {
       if (typeof entry !== 'object' || entry === null || typeof entry.name !== 'string') continue
       servers[entry.name] = entry.ready === true
         ? { status: 'ok', tools: typeof entry.tools === 'number' ? entry.tools : 0 }
         : { status: 'error', error: String(entry.lastError ?? 'unknown error') }
     }
-    const engine = !Array.isArray(payload) && typeof payload?.searchEngine === 'string' ? payload.searchEngine : null
-    return { running: true, pid: child.pid, servers, engine }
+    const engine = hub.searchEngine()
+    // pid is the host process: the console shows "pid NNN" and the dot is
+    // driven by `running` — both stay valid with an in-process hub
+    return { running: true, pid: process.pid, servers, engine }
   }
 
   /**
    * The full downstream tool catalog: [{id, server, name, description,
-   * inputSchema}]. mcp_status carries per-server counts only (no catalog),
-   * so this is mcp_search with the broad-recall query.
+   * inputSchema}]. hub.status() carries per-server counts only (no catalog),
+   * so this is hub.ensureCatalog() — the same `aipx/catalog` surface the
+   * console exposes, without the model-visible search ranking.
    */
   async tools(limit = DEFAULT_TOOLS_LIMIT) {
-    const result = await this._request('aipx/catalog', {}, REQUEST_TIMEOUT_MS)
-    const tools = Array.isArray(result?.tools) ? result.tools : []
-    this.searchEngine = typeof result?.searchEngine === 'string' ? result.searchEngine : null
-    return { tools: tools.slice(0, positiveInt(limit, DEFAULT_TOOLS_LIMIT)), engine: this.searchEngine }
+    const hub = await this._ensureHub()
+    const catalog = await hub.ensureCatalog()
+    this.searchEngine = hub.searchEngine()
+    return { tools: catalog.slice(0, positiveInt(limit, DEFAULT_TOOLS_LIMIT)), engine: this.searchEngine }
   }
 
   /** mcp_search passthrough — ranked rows + the engine that served them. */
   async search(query, limit = SEARCH_DEFAULT_LIMIT) {
-    const results = { results: await this._search(String(query ?? ''), positiveInt(Math.floor(Number(limit)), SEARCH_DEFAULT_LIMIT), SEARCH_TIMEOUT_MS) }
+    const hub = await this._ensureHub()
+    const results = { results: await hub.search(String(query ?? ''), positiveInt(Math.floor(Number(limit)), SEARCH_DEFAULT_LIMIT)) }
     if (this.searchEngine) results.engine = this.searchEngine
     return results
   }
@@ -156,25 +321,62 @@ export class HubBridge {
    * Prompt optimization: rewrite the composer draft into a structured
    * high-quality prompt via the DeepSeek API. The key resolution mirrors the
    * hub's own credential store (env first, then ~/.dsh/.credentials.yaml).
+   *
+   * Rules come from the plugin config (model, effective prompt, contextMode);
+   * when contextMode is "session" and a sessionId is given, the injected
+   * loadSessionContext supplies the recent turns — a null answer degrades to
+   * input-only (contextUsed: false).
    */
-  async optimize(text) {
+  async optimize(text, sessionId, model) {
+    const config = await this.getPluginConfig()
+    if (config.features.promptOptimize.enabled !== true) {
+      throw Object.assign(new Error('优化提示词功能已在插件设置中关闭'), { status: 403 })
+    }
     const key = this._deepseekKey()
     if (!key) {
       throw Object.assign(new Error('未找到 DeepSeek API key——在 ~/.dsh/.credentials.yaml 配置后重试'), { status: 400 })
     }
-    const r = await fetch('https://api.deepseek.com/chat/completions', {
+    let history = null
+    if (config.promptOptimize.contextMode === 'session' && typeof sessionId === 'string' && sessionId !== '' && this.loadSessionContext !== null) {
+      try {
+        history = await this.loadSessionContext(sessionId)
+      } catch (e) {
+        this.log(`session context read failed, optimizing input-only: ${String(e?.message ?? e)}`)
+        history = null
+      }
+    }
+    const messages = buildOptimizeMessages(config, text, history)
+    // 按请求覆盖：客户端在 model 为 "follow" 时把输入框当前选中的模型（精确
+    // id）随请求带来。配置值 "follow" 本身不是可调用模型——无覆盖时回退部署
+    // 默认模型（目录 default），最后才是 deepseek-chat。覆盖模型只试一次，
+    // 失败自动回退并在响应里回传实际使用的模型。
+    const override = typeof model === 'string' ? model.trim().slice(0, 128) : ''
+    let fallback = 'deepseek-chat'
+    try {
+      const catalog = await this.modelCatalog()
+      const fromDefault = catalog?.default?.model
+      if (typeof fromDefault === 'string' && fromDefault !== '') fallback = fromDefault
+    } catch {}
+    const primary = /^[\w.:-]+$/.test(override)
+      ? override
+      : config.promptOptimize.model === 'follow' ? fallback : config.promptOptimize.model
+    const callCompletion = (modelName) => fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: '你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。' },
-          { role: 'user', content: String(text ?? '') },
-        ],
+        model: modelName,
+        messages,
         temperature: 0.7,
       }),
       signal: AbortSignal.timeout(60_000),
     })
+    let useModel = primary
+    let r = await callCompletion(useModel)
+    if (!r.ok && useModel !== fallback) {
+      this.log(`optimize model "%s" rejected (%s), retrying with fallback "%s"`, useModel, r.status, fallback)
+      useModel = fallback
+      r = await callCompletion(useModel)
+    }
     if (!r.ok) {
       const detail = await r.text().catch(() => '')
       throw Object.assign(new Error(`DeepSeek API ${r.status}: ${detail.slice(0, 200)}`), { status: 502 })
@@ -182,7 +384,7 @@ export class HubBridge {
     const data = await r.json()
     const out = data?.choices?.[0]?.message?.content
     if (typeof out !== 'string' || out.length === 0) throw new Error('DeepSeek 返回了空内容')
-    return { text: out.trim() }
+    return { text: out.trim(), contextUsed: history !== null, model: useModel }
   }
 
   _deepseekKey() {
@@ -214,10 +416,49 @@ export class HubBridge {
   }
 
   /**
-   * Add (upsert) or remove one server in mcp-hub.json, then drop the hub
-   * child so the next request respawns on the fresh config. Returns the
-   * updated config. Validation failures carry `status: 400`.
+   * The plugin feature config (ai-plugin-toolkit.json, beside mcp-hub.json):
+   * always a complete, validated object — a missing or corrupt file reads as
+   * defaults and is left untouched on disk.
    */
+  async getPluginConfig() {
+    let raw
+    try {
+      raw = await readFile(this.pluginConfigPath, 'utf8')
+    } catch {
+      return normalizePluginConfig(null)
+    }
+    try {
+      return normalizePluginConfig(JSON.parse(raw))
+    } catch {
+      return normalizePluginConfig(null)
+    }
+  }
+
+  /**
+   * Merge a client PATCH into the plugin config, validate, persist (atomic
+   * rename — same policy as mcp-hub.json), and return the stored result.
+   */
+  async setPluginConfig(patch) {
+    if (patch !== null && typeof patch === 'object' && (patch.features !== null && typeof patch.features === 'object')) {
+      const { mcpConsole, promptOptimize } = patch.features
+      if ((mcpConsole !== null && typeof mcpConsole === 'object' && mcpConsole.enabled !== undefined && typeof mcpConsole.enabled !== 'boolean') ||
+          (promptOptimize !== null && typeof promptOptimize === 'object' && promptOptimize.enabled !== undefined && typeof promptOptimize.enabled !== 'boolean')) {
+        throw invalid('feature enabled must be a boolean')
+      }
+    }
+    const current = await this.getPluginConfig()
+    const merged = normalizePluginConfig(mergePluginPatch(current, patch))
+    await this._savePluginConfig(merged)
+    return merged
+  }
+
+  /** Atomic JSON write (tmp + rename) — the same pattern _saveConfig uses. */
+  async _savePluginConfig(config) {
+    await mkdir(path.dirname(this.pluginConfigPath), { recursive: true })
+    const tmp = `${this.pluginConfigPath}.${process.pid}.tmp`
+    await writeFile(tmp, `${JSON.stringify(config, null, 2)}\n`, 'utf8')
+    await rename(tmp, this.pluginConfigPath)
+  }
   async setServer(action, name, def) {
     if (action !== 'add' && action !== 'remove') {
       throw invalid(`action must be "add" or "remove", got ${JSON.stringify(action ?? null)}`)
@@ -233,7 +474,7 @@ export class HubBridge {
       delete config.servers[name]
     }
     await this._saveConfig(config)
-    this._disposeChild()
+    await this._disposeHub()
     return config
   }
 
@@ -260,7 +501,7 @@ export class HubBridge {
     }
     config.disabledTools = current
     await this._saveConfig(config)
-    this._disposeChild()
+    await this._disposeHub()
     return { ok: true, disabledTools: config.disabledTools }
   }
 
@@ -284,18 +525,13 @@ export class HubBridge {
       result = { sidecar }
     }
     await this._saveConfig(config)
-    this._disposeChild()
+    await this._disposeHub()
     return { ok: true, search: result }
   }
 
-  /** Kill the hub child and forget all state. Idempotent; safe mid-request. */
+  /** Dispose the in-process hub and forget all state. Idempotent; safe mid-request. */
   async stop() {
-    const child = this.child
-    this.child = null
-    this.ready = false
-    this.startPromise = null
-    this._rejectPending(new Error('aipx hub bridge stopped'))
-    if (child) await this._awaitExit(child)
+    await this._disposeHub()
   }
 
   // -------------------------------------------------------------------------
@@ -311,199 +547,59 @@ export class HubBridge {
   }
 
   // -------------------------------------------------------------------------
-  // hub child: spawn, handshake, JSON-RPC
+  // in-process hub: build, rebuild, dispose
   // -------------------------------------------------------------------------
 
-  _spawnArgv() {
-    const bin = process.env.AIPX_BIN
-    if (bin) {
-      // repo checkouts carry no exec bit on bin/aipx.js — run .js/.cjs/.mjs
-      // bins with this Node; anything else is an installed executable
-      if (/\.[cm]?js$/i.test(bin)) return [process.execPath, [bin, 'mcp', 'serve']]
-      return [bin, ['mcp', 'serve']]
-    }
-    // win32 resolves `npx` only through the shell (npx.cmd)
-    return ['npx', ['-y', 'aipx', 'mcp', 'serve'], process.platform === 'win32' ? { shell: true } : {}]
-  }
-
-  /** The running child, starting it first if needed (single flight). */
-  _ensure() {
-    if (this.child && this.ready) return Promise.resolve(this.child)
-    if (!this.startPromise) {
-      this.startPromise = this._start().catch((e) => {
-        this.startPromise = null
+  /** Read the config and build (or rebuild) the in-process hub on demand. */
+  async _ensureHub() {
+    if (this.hub) return this.hub
+    if (!this.hubPromise) {
+      this.hubPromise = this._buildHub().catch((e) => {
+        this.hubPromise = null
         throw e
       })
     }
-    return this.startPromise
+    return this.hubPromise
   }
 
-  async _start() {
-    const [command, args, options] = this._spawnArgv()
-    const child = spawn(command, args, { ...options, stdio: ['pipe', 'pipe', 'pipe'] })
-    this.child = child
-    this.buffer = ''
-    child.stdout.setEncoding('utf8')
-    child.stdout.on('data', (chunk) => this._onData(chunk))
-    child.stderr.setEncoding('utf8')
-    child.stderr.on('data', (chunk) => this.log(String(chunk).trim()))
-    // stdin writes fail with EPIPE when the hub dies mid-request; the request
-    // layer surfaces that — swallow the stream-level error event instead
-    child.stdin?.on('error', () => {})
-    child.on('error', (e) => this._onDeath(child, `aipx hub failed to start: ${e.message}`))
-    child.on('exit', (code) => this._onDeath(child, `aipx hub exited (code ${code ?? 'signal'})`))
-    try {
-      // `aipx mcp serve` refreshes its index before reading stdin, so the
-      // handshake waits in the pipe — possibly for a slow first refresh
-      await this._send(child, 'initialize', {
-        protocolVersion: PROTOCOL_VERSION,
-        capabilities: {},
-        clientInfo: CLIENT_INFO,
-      }, REQUEST_TIMEOUT_MS)
-      this._notify(child, 'notifications/initialized')
-    } catch (e) {
-      this.child = null
-      this.ready = false
-      this.startPromise = null
-      this._kill(child)
-      throw e
-    }
-    this.ready = true
-    return child
-  }
-
-  async _search(query, limit, timeoutMs) {
-    const text = await this._callTool('mcp_search', { query, limit }, timeoutMs)
-    const rows = parseJsonReply(text, 'search')
-    return Array.isArray(rows) ? rows : []
-  }
-
-  async _callTool(name, args = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
-    const result = await this._request('tools/call', { name, arguments: args }, timeoutMs)
-    const text = result?.content?.find((c) => c?.type === 'text')?.text ?? ''
-    // tool failures come back as results with isError, not JSON-RPC errors —
-    // the model side reads them; we turn them into exceptions for the console
-    if (result?.isError) throw new Error(text || `mcp_${name} failed`)
-    return text
-  }
-
-  async _request(method, params, timeoutMs = REQUEST_TIMEOUT_MS) {
-    const child = await this._ensure()
-    try {
-      return await this._send(child, method, params, timeoutMs)
-    } catch (e) {
-      if (!e.retryable) throw e
-      // the hub died mid-request — one retry on the lazily respawned child
-      const fresh = await this._ensure()
-      return this._send(fresh, method, params, timeoutMs)
-    }
-  }
-
-  _send(child, method, params, timeoutMs) {
-    return new Promise((resolve, reject) => {
-      if (this.child !== child || child.exitCode !== null || child.signalCode !== null) {
-        const e = new Error('aipx hub is not running')
-        e.retryable = true
-        reject(e)
-        return
-      }
-      const id = this.nextId++
-      const timer = setTimeout(() => {
-        this.pending.delete(id)
-        reject(new Error(`aipx hub: ${method} timed out after ${timeoutMs}ms`))
-      }, timeoutMs)
-      this.pending.set(id, { resolve, reject, timer })
-      try {
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n')
-      } catch (e) {
-        this.pending.delete(id)
-        clearTimeout(timer)
-        e.retryable = true
-        this._onDeath(child, `aipx hub stdin failed: ${e.message}`)
-        reject(e)
-      }
+  async _buildHub() {
+    const config = await this.getConfig()
+    this.log(`in-process hub: ${Object.keys(config.servers ?? {}).length} server(s) registered`)
+    // searchIndex mirrors `aipx mcp serve --sidecar`: an optional enhancer must
+    // never turn into a hard failure — buildSearchIndex wraps it with lexical
+    // fallback, and undefined means pure lexical.
+    const searchIndex = buildSearchIndex(config.search?.sidecar, this.log)
+    const hub = createHub({
+      servers: config.servers ?? {},
+      log: this.log,
+      searchIndex,
+      disabledTools: sanitizeDisabledTools(config.disabledTools),
     })
+    // refresh before serving so callers never race an empty index; like
+    // serveStdio, a bad configuration degrades per-server, not globally
+    for (const row of await hub.refresh()) {
+      if (row.status !== 'ok') this.log(`in-process hub: ${row.name} — ${row.status}`)
+    }
+    this.log(`in-process hub: search engine ${hub.searchEngine()}`)
+    this.hub = hub
+    this.hubGen += 1
+    this.hubPromise = null
+    return this.hub
   }
 
-  _notify(child, method) {
+  /**
+   * Config changed under a live hub (or stop()): dispose the in-process hub so
+   * the next request rebuilds from the fresh file. Stops spawned downstream
+   * processes first so nothing leaks. Idempotent.
+   */
+  async _disposeHub() {
+    const hub = this.hub
+    this.hub = null
+    this.hubPromise = null
     try {
-      child.stdin?.write(JSON.stringify({ jsonrpc: '2.0', method }) + '\n')
-    } catch {
-      // nothing awaits a notification; the next request re-checks liveness
+      await hub?.stop?.()
+    } catch (e) {
+      this.log(`in-process hub stop failed: ${String(e?.message ?? e)}`)
     }
-  }
-
-  _onData(chunk) {
-    this.buffer += chunk
-    let idx
-    while ((idx = this.buffer.indexOf('\n')) !== -1) {
-      const line = this.buffer.slice(0, idx).trim()
-      this.buffer = this.buffer.slice(idx + 1)
-      if (line === '') continue
-      let msg
-      try {
-        msg = JSON.parse(line)
-      } catch {
-        this.log('aipx hub: non-JSON line dropped')
-        continue
-      }
-      if (msg.id !== undefined && this.pending.has(msg.id)) {
-        const { resolve, reject, timer } = this.pending.get(msg.id)
-        this.pending.delete(msg.id)
-        clearTimeout(timer)
-        if (msg.error) reject(new Error(msg.error.message ?? JSON.stringify(msg.error)))
-        else resolve(msg.result)
-      }
-    }
-  }
-
-  _onDeath(child, message) {
-    if (this.child !== child) return // a restart already replaced this child
-    this.child = null
-    this.ready = false
-    this.startPromise = null
-    const e = new Error(message)
-    e.retryable = true
-    this._rejectPending(e)
-  }
-
-  /** Config changed under a live hub: drop the child; in-flight requests retry on the respawn. */
-  _disposeChild() {
-    const child = this.child
-    if (!child) return
-    this.child = null
-    this.ready = false
-    this.startPromise = null
-    const e = new Error('aipx hub restarting with new config')
-    e.retryable = true
-    this._rejectPending(e)
-    this._kill(child)
-  }
-
-  _kill(child) {
-    try {
-      child.stdin?.end()
-    } catch {}
-    child.kill()
-  }
-
-  _awaitExit(child) {
-    if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve()
-    return new Promise((resolve) => {
-      const timer = setTimeout(resolve, 2000)
-      child.once('exit', () => {
-        clearTimeout(timer)
-        resolve()
-      })
-      this._kill(child)
-    })
-  }
-
-  _rejectPending(err) {
-    for (const { reject, timer } of this.pending.values()) {
-      clearTimeout(timer)
-      reject(err)
-    }
-    this.pending.clear()
   }
 }

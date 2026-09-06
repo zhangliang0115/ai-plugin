@@ -79,7 +79,12 @@ top-1 从 8/20 提升至 14/20，中文 0/10 → 9/10）→ 远程 embedding 混
 `aipx mcp serve --sidecar "python3 …/sidecars/zvec_sidecar.py"` 即接入。
 
 dsh 用户还可以在 **设置 → Plugins → Hub Console** 面板里管理服务器池、启停
-单个工具、浏览工具目录，并用搜索试验场预览模型视角的检索结果。
+单个工具、浏览工具目录，并用搜索试验场预览模型视角的检索结果。 面板顶部是
+**插件设置**：MCP 管理与优化提示词各自独立开关（默认全开）；优化提示词还能
+配置按钮文字说明（默认隐藏、仅图标）、所用模型（默认 `deepseek-chat`）、
+优化范围（默认仅输入框草稿，可切「结合本次会话上下文」）、优化规则与自定义
+模板（模板内容可含 `{{input}}` 占位符，设为生效即替换现有规则）。配置持久化
+在 `~/.config/aipx/ai-plugin-toolkit.json`，缺失或损坏时自动回退默认值。
 
 <p align="center">
   <img src="docs/assets/hub-console.png" width="420" alt="Hub Console — 服务器池、工具启停、工具目录" />

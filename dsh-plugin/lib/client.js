@@ -45,6 +45,20 @@ window.__ModuleLoader__.load({
 			tag.textContent = css;
 			document.head.appendChild(tag);
 		}
+		/**
+		* Second sheet: the 插件设置 panel widgets and the optimize busy spinner.
+		* Kept apart from the main sheet purely so this diff stays readable — same
+		* rules apply (apxdsh- prefix, theme aliases, reduced-motion).
+		*/
+		const cssAdd = ".apxdsh-switchRow{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:8px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-switchText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.apxdsh-switchLabel{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);line-height:18px}.apxdsh-switchHint{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:16px}.apxdsh-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}.apxdsh-subOptions{display:flex;flex-direction:column;gap:12px;padding-left:24px;min-width:0}.apxdsh-inlineRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-select{box-sizing:border-box;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-select:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea{box-sizing:border-box;width:100%;min-height:96px;padding:8px 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;resize:vertical}.apxdsh-textarea:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-tplList{display:flex;flex-direction:column;gap:6px;min-width:0}.apxdsh-tplRow{display:flex;align-items:center;gap:8px;padding:6px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-tplName{flex:none;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}.apxdsh-tplPreview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-tertiary)}.apxdsh-activeTag{flex:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:0 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary)}.apxdsh-tplActions{display:flex;gap:6px;flex:none}.apxdsh-spin{width:10px;height:10px;flex:none;display:inline-block;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:apxdsh-spin .8s linear infinite;vertical-align:middle}@keyframes apxdsh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){.apxdsh-spin{animation:none}}";
+		const tagIdAdd = "ai-plugin-toolkit-dsh/HubConsoleAdd.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagIdAdd) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "ai-plugin-toolkit-dsh";
+			tag.dataset.pluginCss = tagIdAdd;
+			tag.textContent = cssAdd;
+			document.head.appendChild(tag);
+		}
 		//#endregion
 		//#region lib/client/presets.js
 		// Curated MCP server presets for one-click add. Every entry was
@@ -888,6 +902,207 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			);
 		}
 		//#endregion
+		//#region lib/client/PluginSettings.js
+		/**
+		* 插件设置 —— 每个功能的开关 + 优化提示词的行为配置（模型/规则/范围/
+		* 模板）。开关即时保存即时生效；文本类（自定义模型、规则、模板）用显式
+		* 保存按钮。所有写入走 /aipx-hub/plugin-config PATCH。
+		*/
+		function SwitchRow({ label, hint, checked, disabled, onChange }) {
+			return (0, h)("label", { className: "apxdsh-switchRow" },
+				(0, h)("input", { type: "checkbox", className: "apxdsh-check", checked: checked, disabled: disabled, onChange: (e) => onChange(e.target.checked) }),
+				(0, h)("span", { className: "apxdsh-switchText" },
+					(0, h)("span", { className: "apxdsh-switchLabel" }, label),
+					hint === null || hint === undefined ? null : (0, h)("span", { className: "apxdsh-switchHint" }, hint)
+				)
+			);
+		}
+		function PluginSettingsSection() {
+			const config = usePluginConfig();
+			const [busy, setBusy] = (0, react.useState)(false);
+			const [saveError, setSaveError] = (0, react.useState)(null);
+			const [savedNote, setSavedNote] = (0, react.useState)(null);
+			const [customModel, setCustomModel] = (0, react.useState)(null);
+			const [promptDraft, setPromptDraft] = (0, react.useState)(null);
+			const [tplEditor, setTplEditor] = (0, react.useState)(null);
+			const po = config.promptOptimize;
+			const [catalog, setCatalog] = (0, react.useState)(null);
+			(0, react.useEffect)(() => {
+				let live = true;
+				void loadModelCatalog().then((value) => {
+					if (live) setCatalog(value);
+				});
+				return () => {
+					live = false;
+				};
+			}, []);
+			// 下拉 = 跟随 + 部署目录里的真实模型（与 composer 选择器同一份）+ 自定义。
+			// 不手写任何模型名：目录随部署自动更新。历史存量值（如旧版的
+			// deepseek-chat）不在目录里时按自定义展示，用户可原地改选。
+			const catalogModels = catalog === null || !Array.isArray(catalog.groups) ? [] : catalog.groups.flatMap((group) => (group.models ?? []).map((model) => ({ id: String(model.id), name: String(model.name ?? model.id), provider: String(group.name ?? group.id ?? "") })));
+			const modelIsPreset = po.model === "follow" || catalogModels.some((model) => model.id === po.model);
+			const customActive = customModel !== null || !modelIsPreset;
+			const promptValue = promptDraft ?? po.systemPrompt;
+			const save = async (patch) => {
+				setBusy(true);
+				setSaveError(null);
+				setSavedNote(null);
+				try {
+					await applyPluginConfig(patch);
+					setSavedNote("已保存");
+					setTimeout(() => setSavedNote(null), 2500);
+				} catch (e) {
+					setSaveError(e.message);
+				} finally {
+					setBusy(false);
+				}
+			};
+			const saveModel = (value) => {
+				const model = String(value ?? "").trim();
+				if (model === "") return;
+				setCustomModel(null);
+				void save({ promptOptimize: { model } });
+			};
+			const savePrompt = () => {
+				void save({ promptOptimize: { systemPrompt: promptDraft ?? po.systemPrompt } });
+				setPromptDraft(null);
+			};
+			const restorePrompt = () => {
+				void save({ promptOptimize: { systemPrompt: DEFAULT_SYSTEM_PROMPT } });
+				setPromptDraft(null);
+			};
+			const saveTemplates = (templates) => void save({ promptOptimize: { templates } });
+			const activateTemplate = (id) => saveTemplates(po.templates.map((t) => ({ ...t, active: t.id === id })));
+			const deleteTemplate = (id) => saveTemplates(po.templates.filter((t) => t.id !== id));
+			const submitTemplate = () => {
+				if (tplEditor === null || tplEditor.name.trim() === "" || tplEditor.content.trim() === "") return;
+				const templates = [...po.templates];
+				if (typeof tplEditor.id === "string") {
+					const i = templates.findIndex((t) => t.id === tplEditor.id);
+					if (i !== -1) templates[i] = { ...templates[i], name: tplEditor.name.trim(), content: tplEditor.content };
+				} else {
+					templates.push({ id: `tpl-${String(Date.now())}`, name: tplEditor.name.trim(), content: tplEditor.content, active: false });
+				}
+				setTplEditor(null);
+				saveTemplates(templates);
+			};
+			// The panel always renders (its own feature flag is the settings page);
+			// only its sub-sections follow the feature switches.
+			return (0, h)("section", { className: "apxdsh-section" },
+				(0, h)("div", { className: "apxdsh-sectionHead" },
+					(0, h)("h2", { className: "apxdsh-sectionTitle" }, "插件设置"),
+					(0, h)("span", { className: "apxdsh-sectionMeta" }, "功能开关与优化提示词行为，存于 ~/.config/aipx/ai-plugin-toolkit.json"),
+					savedNote === null ? null : (0, h)("span", { className: "apxdsh-savedNotice", role: "status" }, savedNote)
+				),
+				(0, h)("div", { className: "apxdsh-form" },
+					(0, h)(SwitchRow, {
+						label: "MCP 管理（Hub Console）",
+						hint: "Servers / Tool catalog / Search playground 三区块",
+						checked: config.features.mcpConsole.enabled === true,
+						disabled: busy,
+						onChange: (checked) => void save({ features: { mcpConsole: { enabled: checked } } })
+					}),
+					(0, h)(SwitchRow, {
+						label: "优化提示词",
+						hint: "composer 快捷按钮与 /prompt-optimize 命令",
+						checked: config.features.promptOptimize.enabled === true,
+						disabled: busy,
+						onChange: (checked) => void save({ features: { promptOptimize: { enabled: checked } } })
+					}),
+					config.features.promptOptimize.enabled === false ? null : (0, h)("div", { className: "apxdsh-subOptions" },
+						(0, h)(SwitchRow, {
+							label: "按钮显示文字说明",
+							hint: "默认关闭——按钮只显示 ✦ 图标，减少占位",
+							checked: po.showLabel === true,
+							disabled: busy,
+							onChange: (checked) => void save({ promptOptimize: { showLabel: checked } })
+						}),
+						(0, h)("div", { className: "apxdsh-field" },
+							(0, h)("span", { className: "apxdsh-label" }, "优化所用模型"),
+							(0, h)("div", { className: "apxdsh-inlineRow" },
+								(0, h)("select", { className: "apxdsh-select", value: customActive ? "custom" : po.model, disabled: busy, onChange: (e) => {
+									const value = e.target.value;
+									if (value === "custom") {
+										setCustomModel(modelIsPreset ? "" : po.model);
+										return;
+									}
+									saveModel(value);
+								} },
+									(0, h)("option", { value: "follow" }, "跟随输入框所选模型（推荐）"),
+									catalogModels.map((model) => (0, h)("option", { key: model.id, value: model.id }, `${model.name}（${model.provider}）`)),
+									(0, h)("option", { value: "custom" }, "自定义…")
+								),
+								customActive
+									? (0, h)(react.Fragment, null,
+										(0, h)("input", { className: "apxdsh-input", style: { maxWidth: "220px" }, placeholder: "模型名", value: customModel ?? po.model, onChange: (e) => setCustomModel(e.target.value) }),
+										(0, h)("button", { className: "apxdsh-button apxdsh-smallButton", disabled: busy, onClick: () => saveModel(customModel ?? po.model) }, "保存")
+									)
+									: null
+							),
+							(0, h)("p", { className: "apxdsh-hint" }, "「跟随输入框所选模型」按输入框当前选中的模型发起优化；该模型不被 DeepSeek API 支持时自动回退部署默认模型，按钮提示会标注实际使用的模型。列表与输入框的模型选择器同源，随部署自动更新。API key 仍取 DEEPSEEK_API_KEY 环境变量或 ~/.dsh/.credentials.yaml。")
+						),
+						(0, h)("div", { className: "apxdsh-field" },
+							(0, h)("span", { className: "apxdsh-label" }, "优化时结合的内容"),
+							(0, h)("select", { className: "apxdsh-select", value: po.contextMode, disabled: busy, onChange: (e) => void save({ promptOptimize: { contextMode: e.target.value } }) },
+								(0, h)("option", { value: "input" }, "仅输入框草稿（默认）"),
+								(0, h)("option", { value: "session" }, "结合本次会话上下文")
+							),
+							(0, h)("p", { className: "apxdsh-hint" }, "「结合会话」会把当前会话最近几轮发给优化模型；取不到会话历史时自动退回仅输入框。")
+						),
+						(0, h)("div", { className: "apxdsh-field" },
+							(0, h)("span", { className: "apxdsh-label" }, "优化规则（system prompt）"),
+							(0, h)("textarea", { className: "apxdsh-textarea", value: promptValue, disabled: busy, onChange: (e) => setPromptDraft(e.target.value) }),
+							(0, h)("p", { className: "apxdsh-hint" }, "含 {{input}} 时把用户输入原文代入该处；不含则作为 user 消息追加。"),
+							(0, h)("div", { className: "apxdsh-formActions" },
+								(0, h)("button", { className: "apxdsh-button apxdsh-smallButton", disabled: busy || promptDraft === null, onClick: savePrompt }, "保存规则"),
+								(0, h)("button", { className: "apxdsh-ghostButton apxdsh-button apxdsh-smallButton", disabled: busy || promptValue === DEFAULT_SYSTEM_PROMPT || promptDraft !== null, onClick: restorePrompt }, "恢复默认")
+							)
+						),
+						(0, h)("div", { className: "apxdsh-field" },
+							(0, h)("span", { className: "apxdsh-label" }, "自定义模板"),
+							po.templates.length === 0
+								? (0, h)("p", { className: "apxdsh-muted" }, "还没有模板——规则区直接编辑即可，模板用于保存多套规则快速切换。")
+								: (0, h)("div", { className: "apxdsh-tplList" },
+									po.templates.map((t) =>
+										(0, h)("div", { key: t.id, className: "apxdsh-tplRow" },
+											t.active === true ? (0, h)("span", { className: "apxdsh-activeTag" }, "生效中") : null,
+											(0, h)("span", { className: "apxdsh-tplName" }, t.name),
+											(0, h)("span", { className: "apxdsh-tplPreview" }, t.content.replace(/\s+/g, " ").slice(0, 80)),
+											(0, h)("div", { className: "apxdsh-tplActions" },
+												(0, h)("button", { className: "apxdsh-button apxdsh-smallButton", disabled: busy || t.active === true, onClick: () => activateTemplate(t.id) }, "设为生效"),
+												(0, h)("button", { className: "apxdsh-ghostButton apxdsh-button apxdsh-smallButton", disabled: busy, onClick: () => setTplEditor({ id: t.id, name: t.name, content: t.content }) }, "编辑"),
+												(0, h)("button", { className: "apxdsh-dangerButton apxdsh-button apxdsh-smallButton", disabled: busy, onClick: () => deleteTemplate(t.id) }, "删除")
+											)
+										)
+									)
+								),
+							tplEditor === null
+								? (0, h)("div", { className: "apxdsh-formActions" },
+									(0, h)("button", { className: "apxdsh-ghostButton apxdsh-button apxdsh-smallButton", disabled: busy, onClick: () => setTplEditor({ name: "", content: "" }) }, "新建模板")
+								)
+								: (0, h)("div", { className: "apxdsh-form" },
+									(0, h)("div", { className: "apxdsh-formGrid" },
+										(0, h)("div", { className: "apxdsh-field" },
+											(0, h)("span", { className: "apxdsh-label" }, "模板名"),
+											(0, h)("input", { className: "apxdsh-input", value: tplEditor.name, onChange: (e) => setTplEditor({ ...tplEditor, name: e.target.value }) })
+										)
+									),
+									(0, h)("div", { className: "apxdsh-field" },
+										(0, h)("span", { className: "apxdsh-label" }, "模板内容"),
+										(0, h)("textarea", { className: "apxdsh-textarea", value: tplEditor.content, onChange: (e) => setTplEditor({ ...tplEditor, content: e.target.value }) })
+									),
+									(0, h)("div", { className: "apxdsh-formActions" },
+										(0, h)("button", { className: "apxdsh-button apxdsh-smallButton", disabled: busy || tplEditor.name.trim() === "" || tplEditor.content.trim() === "", onClick: submitTemplate }, "保存模板"),
+										(0, h)("button", { className: "apxdsh-ghostButton apxdsh-button apxdsh-smallButton", disabled: busy, onClick: () => setTplEditor(null) }, "取消")
+									)
+								)
+						)
+					)
+				),
+				saveError === null ? null : (0, h)("p", { className: "apxdsh-error", role: "alert" }, `保存失败：${saveError}`)
+			);
+		}
+		//#endregion
 		//#region lib/client/HubConsole.js
 		/**
 		* The tab panel. One refresh fans out to all three bridge reads in parallel;
@@ -897,6 +1112,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 		* repeat the same fact three times.
 		*/
 		function HubConsole() {
+			const pluginConfig = usePluginConfig();
 			const [data, setData] = (0, react.useState)(() => ({
 				loaded: false,
 				statusError: null,
@@ -936,8 +1152,10 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				void refresh();
 			}, [refresh]);
 			const bridgeReady = data.loaded && data.statusError === null;
+			const consoleEnabled = pluginConfig.features.mcpConsole.enabled !== false;
 			return (0, h)("div", { className: "apxdsh-root" },
 				(0, h)(StatusRow, { data: data, refreshing: refreshing, onRefresh: () => { void refresh(); } }),
+				(0, h)(PluginSettingsSection, null),
 				!data.loaded ? (0, h)("p", { className: "apxdsh-muted", role: "status" }, "Checking the hub bridge…") : null,
 				data.loaded && data.statusError !== null
 					? (0, h)("div", { className: "apxdsh-notice", role: "status" },
@@ -948,7 +1166,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 							`（${data.statusError}）。确认 dsh 已安装并重启加载了 ai-plugin-toolkit 插件（Plugin list 里应能看到它），然后点右上角 Refresh 重试。`)
 					)
 					: null,
-				bridgeReady
+				consoleEnabled && bridgeReady
 					? (0, h)(react.Fragment, null,
 						(0, h)(ServersSection, { data: data, onRefresh: refresh }),
 						(0, h)(EngineSection, { data: data, onRefresh: refresh }),
@@ -957,6 +1175,116 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					)
 					: null
 			);
+		}
+		//#endregion
+		//#region lib/client/plugin-config.js
+		/**
+		* Module-level plugin config store. One shared cache + subscriber set: the
+		* settings panel, the optimize dock, the hero dock and the HubConsole all
+		* read the same snapshot, and a save from the panel repaints every surface
+		* (feature toggles, label visibility) without a page reload. The bridge
+		* remains the only source of truth — the cache is a mirror of the last
+		* successful GET/POST of /aipx-hub/plugin-config.
+		*/
+		const DEFAULT_SYSTEM_PROMPT = "你是提示词优化助手。把用户的原始输入改写成清晰、具体、结构化的高质量提示词：明确目标与预期产出物，补全必要上下文与约束（不确定处以「假设：…」标注），按 目标/背景/要求/产出格式 分节。只输出改写后的提示词，不要执行它。";
+		const DEFAULT_PLUGIN_CONFIG = {
+			features: {
+				mcpConsole: { enabled: true },
+				promptOptimize: { enabled: true }
+			},
+			promptOptimize: {
+				showLabel: false,
+				model: "follow",
+				contextMode: "input",
+				systemPrompt: DEFAULT_SYSTEM_PROMPT,
+				templates: []
+			}
+		};
+		function normalizePluginConfigClient(value) {
+			const out = JSON.parse(JSON.stringify(DEFAULT_PLUGIN_CONFIG));
+			if (typeof value !== "object" || value === null) return out;
+			const features = value.features;
+			if (typeof features === "object" && features !== null) {
+				for (const id of ["mcpConsole", "promptOptimize"]) {
+					const f = features[id];
+					if (typeof f === "object" && f !== null && typeof f.enabled === "boolean") out.features[id].enabled = f.enabled;
+				}
+			}
+			const po = value.promptOptimize;
+			if (typeof po === "object" && po !== null) {
+				if (typeof po.showLabel === "boolean") out.promptOptimize.showLabel = po.showLabel;
+				if (typeof po.model === "string" && po.model.trim() !== "") out.promptOptimize.model = po.model.trim().slice(0, 128);
+				if (po.contextMode === "input" || po.contextMode === "session") out.promptOptimize.contextMode = po.contextMode;
+				if (typeof po.systemPrompt === "string") out.promptOptimize.systemPrompt = po.systemPrompt;
+				if (Array.isArray(po.templates)) {
+					const templates = [];
+					for (const t of po.templates) {
+						if (typeof t !== "object" || t === null) continue;
+						if (typeof t.id !== "string" || t.id === "" || typeof t.name !== "string" || typeof t.content !== "string") continue;
+						templates.push({ id: t.id, name: t.name, content: t.content, active: t.active === true });
+					}
+					out.promptOptimize.templates = templates;
+				}
+			}
+			return out;
+		}
+		const pluginConfigState = {
+			config: null,
+			promise: null,
+			listeners: new Set()
+		};
+		function getPluginConfigSnapshot() {
+			return pluginConfigState.config ?? DEFAULT_PLUGIN_CONFIG;
+		}
+		function notifyPluginConfig() {
+			for (const fn of pluginConfigState.listeners) {
+				try {
+					fn();
+				} catch {}
+			}
+		}
+		/** Load once, shared by every consumer; failed loads reset so later mounts retry. */
+		function ensurePluginConfig() {
+			if (pluginConfigState.promise !== null) return pluginConfigState.promise;
+			pluginConfigState.promise = bridgeRequest("/plugin-config").then((answer) => {
+				pluginConfigState.config = answer.ok ? normalizePluginConfigClient(answer.value) : null;
+				notifyPluginConfig();
+				return getPluginConfigSnapshot();
+			}).finally(() => {
+				pluginConfigState.promise = null;
+			});
+			return pluginConfigState.promise;
+		}
+		/** Persist a PATCH; the response is the normalized stored config. Throws with the bridge error text. */
+		function applyPluginConfig(patch) {
+			return bridgeRequest("/plugin-config", { method: "POST", body: patch }).then((answer) => {
+				if (!answer.ok) throw new Error(answer.error);
+				pluginConfigState.config = normalizePluginConfigClient(answer.value);
+				notifyPluginConfig();
+				return pluginConfigState.config;
+			});
+		}
+		function subscribePluginConfig(fn) {
+			pluginConfigState.listeners.add(fn);
+			return () => {
+				pluginConfigState.listeners.delete(fn);
+			};
+		}
+		/** React hook: subscribe to the store; returns the snapshot (defaults while loading). */
+		function usePluginConfig() {
+			const [config, setConfig] = (0, react.useState)(getPluginConfigSnapshot);
+			(0, react.useEffect)(() => {
+				let live = true;
+				void ensurePluginConfig().then(() => {
+					if (live) setConfig(getPluginConfigSnapshot());
+				});
+				const unsubscribe = subscribePluginConfig(() => setConfig(getPluginConfigSnapshot()));
+				return () => {
+					live = false;
+					unsubscribe();
+				};
+			}, []);
+			return config;
 		}
 		//#endregion
 		//#region lib/client/composer-dom.js
@@ -1003,7 +1331,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 			const focusEditor = async () => {
 				composer.focus();
-				await new Promise((resolve) => requestAnimationFrame(resolve));
+				await new Promise((resolve) => setTimeout(resolve, 32));
 			};
 			const selectAll = () => {
 				const sel = window.getSelection();
@@ -1043,7 +1371,7 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					composer.textContent = text;
 					composer.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: text }));
 					composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
-					await new Promise((resolve) => requestAnimationFrame(resolve));
+					await new Promise((resolve) => setTimeout(resolve, 32));
 				}
 			];
 			for (const run of strategies) {
@@ -1054,24 +1382,76 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			}
 			throw new Error("改写结果写不进输入框（编辑器拒绝了外部替换）");
 		};
-		/** One /aipx-hub/optimize round trip; throws with the bridge's error text. */
-		const requestOptimize = async (text) => {
+		//#region lib/client/model-catalog.js
+		/**
+		* The host's model catalog — the same provider/model view the composer
+		* model selector shows, served by the bridge's /aipx-hub/model-catalog
+		* (host-side ctx.llm; the client-side `remote` face is not granted to
+		* external plugins). Shared: the settings dropdown renders dynamic
+		* options from it; the optimize docks use it to map the composer-selected
+		* model's display name to its exact id when promptOptimize.model is
+		* "follow".
+		*/
+		let catalogPromise = null;
+		function loadModelCatalog() {
+			if (catalogPromise === null) {
+				catalogPromise = bridgeRequest("/model-catalog").then((answer) => {
+					const value = answer.ok && typeof answer.value === "object" && answer.value !== null ? answer.value : null;
+					return Array.isArray(value.groups) && value.groups.length > 0 ? value : null;
+				}).catch(() => null);
+			}
+			return catalogPromise;
+		}
+		/** 目录里精确映射：显示名 → 模型 id。映射不到时退回小写试探（宿主对
+		* API 不认的模型自动回退 deepseek-chat 并回传实际使用的模型）。 */
+		async function resolveFollowModel() {
+			const button = [...document.querySelectorAll("button[aria-label]")]
+				.find((b) => (b.getAttribute("aria-label") ?? "").startsWith("选择模型，当前"));
+			if (!button) return null;
+			const m = /选择模型，当前 (.+?)(?:，推理等级|$)/.exec(button.getAttribute("aria-label") ?? "");
+			if (m === null) return null;
+			const name = m[1].trim();
+			const catalog = await loadModelCatalog();
+			if (catalog !== null) {
+				for (const group of catalog.groups) {
+					for (const model of group.models ?? []) {
+						if (model.name === name && typeof model.id === "string" && model.id !== "") return model.id;
+					}
+				}
+			}
+			const guess = name.toLowerCase().replace(/\s+/g, "-");
+			return /^[\w.:-]+$/.test(guess) ? guess : null;
+		}
+		//#endregion
+		/** One /aipx-hub/optimize round trip; throws with the bridge's error text.
+		* Returns { text, model } — the model that actually served the request. */
+		const requestOptimize = async (text, sessionId, model) => {
+			const payload = { text };
+			if (sessionId !== undefined) payload.sessionId = sessionId;
+			if (model !== undefined && model !== null) payload.model = model;
 			const r = await fetch("/aipx-hub/optimize", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ text })
+				body: JSON.stringify(payload)
 			});
 			const data = await r.json().catch(() => ({}));
 			if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
-			return data.text;
+			return { text: data.text, model: typeof data.model === "string" ? data.model : null };
 		};
 		//#endregion
 		//#region lib/client/PromptOptimizeDock.js
 		/**
 		* ✦ 优化提示词 —— 会话内 composer 卡片正下方的 dock 条目。点击后读取
 		* 输入框草稿，经 /aipx-hub/optimize（DeepSeek 改写）替换回输入框。
+		*
+		* Behavior is config-driven: the whole feature can be switched off
+		* (renders null), the label defaults to icon-only (`showLabel`), and the
+		* busy state shows a spinner + 「生成中…」 instead of the old "✦ …".
+		* `sessionId` arrives from the slot system's session scope (undefined on
+		* the hero variant), and is forwarded for contextMode "session".
 		*/
-		function PromptOptimizeDock() {
+		function PromptOptimizeDock({ sessionId }) {
+			const config = usePluginConfig();
 			const [phase, setPhase] = (0, react.useState)("idle");
 			const [note, setNote] = (0, react.useState)(null);
 			const optimize = async () => {
@@ -1083,12 +1463,13 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					return;
 				}
 				setPhase("busy");
-				setNote("优化中…");
+				setNote("生成中…");
 				try {
-					const text = await requestOptimize(draft);
-					await writeComposerEl(composer, text);
+					const followModel = config.promptOptimize.model === "follow" ? await resolveFollowModel() : null;
+					const result = await requestOptimize(draft, sessionId, followModel);
+					await writeComposerEl(composer, result.text);
 					setPhase("done");
-					setNote("已用优化后的提示词替换输入框内容。");
+					setNote(result.model !== null ? `已用 ${result.model} 优化并替换输入框内容。` : "已用优化后的提示词替换输入框内容。");
 					setTimeout(() => setNote(null), 4000);
 				} catch (e) {
 					setPhase("error");
@@ -1096,13 +1477,22 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					setTimeout(() => setNote(null), 6000);
 				}
 			};
+			if (config.features.promptOptimize.enabled !== true) return null;
+			const showLabel = config.promptOptimize.showLabel === true;
 			return (0, h)("div", { className: "apxdsh-dock", role: "status" },
 				(0, h)("button", {
 					className: "apxdsh-dockButton" + (phase === "busy" ? " apxdsh-dockBusy" : "") + (phase === "error" ? " apxdsh-dockError" : ""),
 					onClick: () => { void optimize(); },
 					disabled: phase === "busy",
-					title: note ?? "优化输入框中的提示词"
-				}, phase === "busy" ? "✦ …" : "✦ 优化提示词")
+					title: note ?? "优化输入框中的提示词",
+					"aria-label": "优化输入框中的提示词"
+				},
+					phase === "busy"
+						? [ (0, h)("span", { key: "sp", className: "apxdsh-spin" }), " ", "生成中…" ]
+						: showLabel
+							? [ (0, h)("span", { key: "g", className: "apxdsh-dockGlyph" }, "✦"), " ", "优化提示词" ]
+							: (0, h)("span", { className: "apxdsh-dockGlyph" }, "✦")
+				)
 			);
 		}
 		//#endregion
@@ -1125,20 +1515,34 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				const button = document.createElement("button");
 				button.type = "button";
 				button.className = "apxdsh-dockButton";
-				button.textContent = "✦ 优化提示词";
 				button.title = "优化输入框中的提示词";
 				button.style.pointerEvents = "auto";
 				host.appendChild(button);
 				document.body.appendChild(host);
+				// Config-driven presentation: the feature flag hides the button, and
+				// the label defaults to icon-only per `showLabel`.
+				let configEnabled = getPluginConfigSnapshot().features.promptOptimize.enabled === true;
+				let configShowLabel = getPluginConfigSnapshot().promptOptimize.showLabel === true;
+				const refreshLabel = () => {
+					button.textContent = configShowLabel ? "✦ 优化提示词" : "✦";
+				};
+				refreshLabel();
 				let noteTimer = 0;
 				const flash = (title, ms) => {
 					button.title = title;
 					clearTimeout(noteTimer);
 					noteTimer = setTimeout(() => {
 						button.title = "优化输入框中的提示词";
-						button.textContent = "✦ 优化提示词";
+						refreshLabel();
 					}, ms);
 				};
+				const unsubscribe = subscribePluginConfig(() => {
+					const next = getPluginConfigSnapshot();
+					configEnabled = next.features.promptOptimize.enabled === true;
+					configShowLabel = next.promptOptimize.showLabel === true;
+					refreshLabel();
+					schedule();
+				});
 				button.addEventListener("click", async () => {
 					if (button.disabled) return;
 					const composer = findComposerEl();
@@ -1148,12 +1552,13 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 						return;
 					}
 					button.disabled = true;
-					button.textContent = "✦ …";
+					button.textContent = "✦ 生成中…";
 					try {
-						const text = await requestOptimize(draft);
-						await writeComposerEl(composer, text);
+						const followModel = getPluginConfigSnapshot().promptOptimize.model === "follow" ? await resolveFollowModel() : null;
+						const result = await requestOptimize(draft, undefined, followModel);
+						await writeComposerEl(composer, result.text);
 						button.textContent = "✦ 已替换";
-						flash("已用优化后的提示词替换输入框内容。", 4000);
+						flash(result.model !== null ? `已用 ${result.model} 优化并替换输入框内容。` : "已用优化后的提示词替换输入框内容。", 4000);
 					} catch (e) {
 						flash(`优化失败：${e.message}`, 6000);
 					} finally {
@@ -1163,6 +1568,10 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 				// 访问模式 chip 是 hero 工具条上最稳的锚点；找不到就退到输入卡片左下角。
 				// 会话视图由官方 dock 槽位负责——浮层在 .apxdsh-dock 出现时收场。
 				const position = () => {
+					if (!configEnabled) {
+						host.style.display = "none";
+						return;
+					}
 					const composer = findComposerEl();
 					if (composer === null || document.querySelector(".apxdsh-dock") !== null) {
 						host.style.display = "none";
@@ -1184,17 +1593,30 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 					host.style.left = `${String(Math.round(x))}px`;
 					host.style.top = `${String(Math.round(y))}px`;
 				};
-				let raf = 0;
+				// 合并用 setTimeout 而不是 rAF：后台/隐藏标签页里 rAF 回调会被
+				// 浏览器无限搁置，浮层会永远停在初始隐藏态（实测踩过）。
+				// setTimeout 后台仍会触发（最低约 1s 一拍）。
+				let scheduled = 0;
 				const schedule = () => {
-					if (raf !== 0) return;
-					raf = requestAnimationFrame(() => {
-						raf = 0;
+					if (scheduled !== 0) return;
+					scheduled = window.setTimeout(() => {
+						scheduled = 0;
 						position();
-					});
+					}, 32);
 				};
 				new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
 				window.addEventListener("resize", schedule);
 				window.addEventListener("scroll", schedule, true);
+				// 后台/隐藏标签页里 rAF 永不回调（浏览器节流），浮层会永远停在
+				// 初始隐藏态——低频 setInterval 兜底保证恢复可见后能追上。
+				const interval = setInterval(schedule, 1000);
+				window.addEventListener("pagehide", () => clearInterval(interval), { once: true });
+				void ensurePluginConfig().then(() => {
+					configEnabled = getPluginConfigSnapshot().features.promptOptimize.enabled === true;
+					configShowLabel = getPluginConfigSnapshot().promptOptimize.showLabel === true;
+					refreshLabel();
+					schedule();
+				});
 				position();
 			};
 			if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
@@ -1227,7 +1649,10 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
 				name: "conversation.composer.dock",
 				id: "aipx-prompt-optimize",
-				order: 0
+				order: 0,
+				// Session scope: the inject factory receives the current session id,
+				// which contextMode "session" forwards to /aipx-hub/optimize.
+				inject: (sessionId) => ({ sessionId })
 			}, PromptOptimizeDock));
 			// 官方 dock 槽位只在已打开的会话里投影；hero 首页由这个浮层补位
 			mountHeroDock();
