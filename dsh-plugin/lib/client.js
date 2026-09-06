@@ -50,7 +50,7 @@ window.__ModuleLoader__.load({
 		* Kept apart from the main sheet purely so this diff stays readable — same
 		* rules apply (apxdsh- prefix, theme aliases, reduced-motion).
 		*/
-		const cssAdd = ".apxdsh-switchRow{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:8px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-switchText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.apxdsh-switchLabel{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);line-height:18px}.apxdsh-switchHint{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:16px}.apxdsh-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}.apxdsh-subOptions{display:flex;flex-direction:column;gap:12px;padding-left:24px;min-width:0}.apxdsh-inlineRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-select{box-sizing:border-box;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-select:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea{box-sizing:border-box;width:100%;min-height:96px;padding:8px 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;resize:vertical}.apxdsh-textarea:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-tplList{display:flex;flex-direction:column;gap:6px;min-width:0}.apxdsh-tplRow{display:flex;align-items:center;gap:8px;padding:6px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-tplName{flex:none;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}.apxdsh-tplPreview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-tertiary)}.apxdsh-activeTag{flex:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:0 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary)}.apxdsh-tplActions{display:flex;gap:6px;flex:none}.apxdsh-spin{width:10px;height:10px;flex:none;display:inline-block;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:apxdsh-spin .8s linear infinite;vertical-align:middle}@keyframes apxdsh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){.apxdsh-spin{animation:none}}.apxdsh-fullscreen{width:100%;max-width:none}";
+		const cssAdd = ".apxdsh-switchRow{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:8px 12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-switchText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.apxdsh-switchLabel{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);line-height:18px}.apxdsh-switchHint{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:16px}.apxdsh-check{flex:none;accent-color:var(--dsw-alias-brand-primary)}.apxdsh-subOptions{display:flex;flex-direction:column;gap:12px;padding-left:24px;min-width:0}.apxdsh-inlineRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.apxdsh-select{box-sizing:border-box;height:32px;padding:0 10px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px}.apxdsh-select:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea{box-sizing:border-box;width:100%;min-height:96px;padding:8px 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;resize:vertical}.apxdsh-textarea:focus{border-color:var(--dsw-alias-brand-primary);outline:none}.apxdsh-textarea::placeholder{color:var(--dsw-alias-label-dimmed)}.apxdsh-tplList{display:flex;flex-direction:column;gap:6px;min-width:0}.apxdsh-tplRow{display:flex;align-items:center;gap:8px;padding:6px 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;min-width:0}.apxdsh-tplName{flex:none;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}.apxdsh-tplPreview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-tertiary)}.apxdsh-activeTag{flex:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:4px;padding:0 6px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary)}.apxdsh-tplActions{display:flex;gap:6px;flex:none}.apxdsh-spin{width:10px;height:10px;flex:none;display:inline-block;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:apxdsh-spin .8s linear infinite;vertical-align:middle}@keyframes apxdsh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){.apxdsh-spin{animation:none}}.VOzbGW_panel{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;border-radius:0!important}";
 		const tagIdAdd = "ai-plugin-toolkit-dsh/HubConsoleAdd.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagIdAdd) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1001,13 +1001,6 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 						onChange: (checked) => void save({ features: { mcpConsole: { enabled: checked } } })
 					}),
 					(0, h)(SwitchRow, {
-						label: "设置全屏",
-						hint: "开启后,点开 dsh 设置即为全屏(不再局限 800px 小窗)",
-						checked: config.features.mcpConsole.fullscreen === true,
-						disabled: busy,
-						onChange: (checked) => void save({ features: { mcpConsole: { fullscreen: checked } } })
-					}),
-					(0, h)(SwitchRow, {
 						label: "优化提示词",
 						hint: "composer 快捷按钮与 /prompt-optimize 命令",
 						checked: config.features.promptOptimize.enabled === true,
@@ -1188,23 +1181,6 @@ onChange: (event) => { setName(event.target.value); setOverwriteOk(false); }
 
 		function HubConsole() {
 			const pluginConfig = usePluginConfig();
-			// Full-screen the WHOLE dsh settings modal (the shell's 800px panel) when the
-			// flag is on. The .VOzbGW_panel class is dsh's CSS-module hash — stable per dsh
-			// build (re-derive it on a dsh upgrade). Injecting a global rule from our plugin
-			// is the everything-is-a-plugin path to override dsh's shell chrome.
-			(0, react.useEffect)(() => {
-				const on = pluginConfig.features.mcpConsole.fullscreen === true;
-				const q = () => (typeof document !== "undefined" ? document.querySelector("style[data-apxdsh-settings-fs]") : null);
-				if (on && q() === null) {
-					const el = document.createElement("style");
-					el.dataset.apxdshSettingsFs = "";
-					el.textContent = ".VOzbGW_panel{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;border-radius:0!important}";
-					document.head.appendChild(el);
-				} else if (!on) {
-					const el = q(); if (el) el.remove();
-				}
-				return () => { const el = q(); if (el) el.remove(); };
-			}, [pluginConfig.features.mcpConsole.fullscreen]);
 			const [data, setData] = (0, react.useState)(() => ({
 				loaded: false,
 				statusError: null,
